@@ -53,6 +53,12 @@ aside.right{border-right:0;border-left:1px solid var(--line)}
 .lib h4{margin:0;padding:12px 14px 6px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:1px}
 .lib-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 10px 6px}
 .lib h4{position:sticky;top:0;z-index:1;background:var(--panel)}
+#lib h4{top:60px}
+.lib-search{position:sticky;top:0;z-index:3;padding:10px 10px 8px;background:var(--panel);border-bottom:1px solid var(--line)}
+.lib-search input{width:100%;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font:inherit;outline:none}
+.lib-search input:focus{border-color:var(--accent)}
+.lib-search small{display:block;padding-top:5px;color:var(--muted);font-size:11px}
+.lib-empty{padding:22px 14px;color:var(--muted);font-size:12px;text-align:center}
 .item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px 6px;border:1px solid var(--line);
   border-radius:8px;background:#fff;cursor:grab;user-select:none;touch-action:pan-y;transition:border-color .15s,transform .15s}
 .item.dragging{border-color:var(--accent);opacity:.5}
@@ -373,6 +379,7 @@ const NAMES_EN = {
   '橡木地板':'Oak Flooring', '胡桃木地板':'Walnut Flooring', '800 地砖':'800 Tile', '600 地砖':'600 Tile', '大理石':'Marble',
   '300 防滑砖':'300 Anti-slip Tile', '水磨石':'Terrazzo', '满铺地毯':'Wall-to-wall Carpet',
   '卧室':'Bedroom', '餐厨':'Dining & Kitchen', '卫浴':'Bathroom', '家电':'Appliances', '书房 · 休闲':'Study & Leisure',
+  '玄关 · 收纳':'Entry & Storage', '阳台':'Balcony',
   '双人床 1.8m':'Double Bed 1.8m', '双人床 1.5m':'Double Bed 1.5m', '双人床':'Double Bed', '单人床':'Single Bed', '婴儿床':'Crib',
   '床头柜':'Nightstand', '衣柜':'Wardrobe', '小衣柜':'Small Wardrobe', '梳妆台':'Dresser', '书桌':'Desk', '椅子':'Chair',
   '书架':'Bookshelf', '飘窗垫':'Bay Cushion', '三人沙发':'3-Seat Sofa', '双人沙发':'Loveseat', '转角沙发':'Corner Sofa',
@@ -385,6 +392,11 @@ const NAMES_EN = {
   '55 寸电视':'55" TV', '对开门冰箱':'French-door Fridge', '柜机空调':'Floor AC', '挂机空调':'Wall AC', '洗碗机':'Dishwasher',
   '蒸烤箱高柜':'Oven Tower', '烘干机':'Dryer', '空气净化器':'Air Purifier', '长书桌':'Long Desk', '办公椅':'Office Chair',
   '大书架':'Large Bookshelf', '立式钢琴':'Upright Piano', '跑步机':'Treadmill', '阅读椅':'Reading Chair', '茶桌':'Tea Table', '休闲椅':'Lounge Chair',
+  '五斗柜':'Chest of Drawers', '六斗柜':'Wide Chest', '沙发床':'Sofa Bed', '玻璃展示柜':'Display Cabinet', '双门展示柜':'Wide Display Cabinet',
+  '四人餐桌':'4-Seat Dining Table', '厨房高柜':'Tall Pantry', '微波炉':'Microwave', '镜柜':'Mirror Cabinet', '浴室置物架':'Bathroom Shelf',
+  '扫地机器人':'Robot Vacuum', '投影仪':'Projector', '文件柜':'Filing Cabinet', '衣帽架':'Coat Rack', '双层鞋柜':'Two-Tier Shoe Cabinet',
+  '换鞋凳':'Entry Bench', '晾衣架':'Drying Rack', '折叠晾衣架':'Folding Drying Rack', '小餐边柜':'Small Sideboard',
+  '窄书架':'Narrow Bookshelf', '床尾凳':'Bed Bench', '小地毯':'Small Rug', '单人浴缸':'Compact Bathtub',
 };
 const nm = s => LANG === 'en' ? (NAMES_EN[s] ?? s) : s;
 // 静态文案：元素上写 data-en / data-en-title，中文原文首次切换时存进 dataset
@@ -487,29 +499,40 @@ const LIB = [
     ['bed','双人床 1.8m',1800,2000,'#c9d6df'],['bed','双人床 1.5m',1500,2000,'#d8c7dc'],['bed','单人床',1200,2000,'#e8d5b5'],
     ['crib','婴儿床',1250,700,'#efe3d0'],['nightstand','床头柜',450,400,'#e8dccb'],['wardrobe','衣柜',2000,600,'#efe6d8'],
     ['wardrobe','小衣柜',1200,550,'#efe6d8'],['dresser','梳妆台',1000,450,'#efe6d8'],['desk','书桌',1200,600,'#e2cfb4'],
-    ['chair','椅子',450,480,'#cfc6b8'],['bookshelf','书架',800,300,'#e2cfb4'],['baycushion','飘窗垫',520,1800,'#e7dccd']]},
+    ['chair','椅子',450,480,'#cfc6b8'],['bookshelf','书架',800,300,'#e2cfb4'],['baycushion','飘窗垫',520,1800,'#e7dccd'],
+    ['chest','五斗柜',800,450,'#d6b994'],['chest','六斗柜',1200,450,'#c6a47c'],['bench','床尾凳',1200,420,'#cbb9a9']]},
   {cat:'客厅', items:[
     ['sofa','三人沙发',2400,900,'#b7c4b0'],['sofa','双人沙发',1700,880,'#c3cbd6'],['cornersofa','转角沙发',2800,1700,'#b7c4b0'],
     ['armchair','单人沙发',850,850,'#d6b99a'],['beanbag','懒人沙发',800,800,'#e0b98f'],['coffeetable','茶几',1300,650,'#e8dccb'],
     ['sidetable','边几',500,500,'#d9c3a3'],['tvstand','电视柜',2400,400,'#e2cfb4'],['rug','地毯',2400,1700,'#d9cbb8'],
-    ['shoecab','鞋柜',1000,350,'#efe6d8'],['shoecab','玄关柜',1400,380,'#e6dccc'],['floorlamp','落地灯',450,450,'#3d3a34'],
-    ['plant','绿植',500,500,'#a9c39b'],['plant','大绿植',700,700,'#9dbb8c']]},
+    ['floorlamp','落地灯',450,450,'#3d3a34'],['plant','绿植',500,500,'#a9c39b'],['plant','大绿植',700,700,'#9dbb8c'],
+    ['sofabed','沙发床',2100,950,'#b9c6bf'],['displaycase','玻璃展示柜',900,400,'#c4ad8d'],
+    ['displaycase','双门展示柜',1600,450,'#baa486'],['rug','小地毯',1600,1000,'#d7c7b3']]},
   {cat:'餐厨', items:[
-    ['table','餐桌',1400,800,'#e2cfb4'],['table','六人餐桌',1800,900,'#d8c2a2'],['roundtable','圆桌',1000,1000,'#e2cfb4'],
+    ['table','餐桌',1400,800,'#e2cfb4'],['table','四人餐桌',1200,750,'#d7bd97'],['table','六人餐桌',1800,900,'#d8c2a2'],['roundtable','圆桌',1000,1000,'#e2cfb4'],
     ['chair','餐椅',450,480,'#cfc6b8'],['island','岛台',1800,900,'#e9e5de'],['barstool','吧椅',420,420,'#6b5d4c'],
     ['counter','橱柜台面',1600,600,'#e9e5de'],['stove','燃气灶',750,450,'#dcdcdc'],['ksink','水槽',800,450,'#e1e6ea'],
-    ['fridge','冰箱',700,700,'#dfe4e8'],['cabinet','餐边柜',1600,400,'#efe6d8']]},
+    ['fridge','冰箱',700,700,'#dfe4e8'],['cabinet','餐边柜',1600,400,'#efe6d8'],['cabinet','小餐边柜',1000,380,'#efe6d8'],
+    ['pantry','厨房高柜',600,600,'#e8e0d2'],['microwave','微波炉',520,400,'#c8ced2']]},
   {cat:'卫浴', items:[
     ['toilet','马桶',400,700,'#ffffff'],['vanity','浴室柜',800,500,'#eef1f3'],['vanity','双盆浴室柜',1200,500,'#eef1f3'],
     ['shower','淋浴房',900,900,'#e4edf2'],['bathtub','浴缸',1600,750,'#eef3f6'],['washer','洗衣机',600,600,'#e6ebee'],
-    ['waterheater','电热水器',800,450,'#f4f4f2'],['cabinet','储物柜',1000,400,'#efe6d8']]},
+    ['waterheater','电热水器',800,450,'#f4f4f2'],['cabinet','储物柜',1000,400,'#efe6d8'],
+    ['bathtub','单人浴缸',1400,700,'#eef3f6'],['mirrorcab','镜柜',800,180,'#dbe5e8'],['bathrack','浴室置物架',600,300,'#d2dadb']]},
   {cat:'家电', items:[
     ['tv','65 寸电视',1450,80,'#1d1d1f'],['tv','55 寸电视',1230,80,'#1d1d1f'],['fridge','对开门冰箱',910,700,'#c9ced3'],
     ['aircon','柜机空调',500,380,'#f6f7f8'],['acwall','挂机空调',900,250,'#f6f7f8'],['dishwasher','洗碗机',600,600,'#c9ced3'],
-    ['ovencol','蒸烤箱高柜',600,600,'#efe6d8'],['dryer','烘干机',600,600,'#e6ebee'],['purifier','空气净化器',400,300,'#f4f4f2']]},
+    ['ovencol','蒸烤箱高柜',600,600,'#efe6d8'],['dryer','烘干机',600,600,'#e6ebee'],['purifier','空气净化器',400,300,'#f4f4f2'],
+    ['robotvac','扫地机器人',350,350,'#434a4d'],['projector','投影仪',320,250,'#e9eaeb']]},
   {cat:'书房 · 休闲', items:[
     ['desk','长书桌',1600,700,'#d8c2a2'],['officechair','办公椅',620,620,'#4a4f55'],['bookshelf','大书架',1600,350,'#e2cfb4'],
+    ['bookshelf','窄书架',500,300,'#e2cfb4'],['filecab','文件柜',800,450,'#d7dadd'],
     ['piano','立式钢琴',1500,600,'#1f1d1b'],['treadmill','跑步机',800,1800,'#3a3a3c'],['armchair','阅读椅',750,800,'#c9a98a']]},
+  {cat:'玄关 · 收纳', items:[
+    ['shoecab','鞋柜',1000,350,'#efe6d8'],['shoecab','双层鞋柜',800,350,'#e3d7c6'],['shoecab','玄关柜',1400,380,'#e6dccc'],
+    ['coatstand','衣帽架',500,500,'#9b7858'],['bench','换鞋凳',900,400,'#cbb69f']]},
+  {cat:'阳台', items:[
+    ['dryingrack','晾衣架',1600,600,'#b9c3c6'],['dryingrack','折叠晾衣架',1200,550,'#b9c3c6']]},
 ];
 const typeColor = t => { for (const c of LIB) for (const i of c.items) if (i[0]===t) return i[4]; return '#eee'; };
 
@@ -743,12 +766,25 @@ function furnSVG(t,w,d,c){
       return s;
     }
     case 'treadmill': return rc(x,y,w,d,c,'rx="50"') + rc(x+90,y+320,w-180,d-400,'#1c1c1e','rx="25"') + rc(x,y,w,230,shade(c,1.4),'rx="40"');
+    case 'chest': return rc(x,y,w,d,c,'rx="20"') + ln(x+35,y+d*.32,x+w-35,y+d*.32) + ln(x+35,y+d*.65,x+w-35,y+d*.65) + ec(0,0,m*.07,m*.07,'#987754');
+    case 'bench': return rc(x,y,w,d,shade(c,.8),'rx="65"') + rc(x+45,y+45,w-90,d-90,c,'rx="55"');
+    case 'sofabed': return rc(x,y,w,d,shade(c,.8),'rx="55"') + rc(x+150,y+220,w-300,d-270,c,'rx="40"') + rc(x,y,w,170,shade(c,.72),'rx="40"') + ln(0,y+220,0,y+d-50,DASH);
+    case 'displaycase': return rc(x,y,w,d,c) + rc(x+50,y+45,w-100,d-90,'#dce8e9','fill-opacity=".75"') + ln(0,y+45,0,y+d-45) + ln(x+90,y+85,x+w-90,y+d-85);
+    case 'pantry': return rc(x,y,w,d,c) + ln(0,y+30,0,y+d-30) + rc(x+90,y+d*.7,w-180,35,shade(c,.75));
+    case 'microwave': return rc(x,y,w,d,c,'rx="45"') + rc(x+55,y+55,w*.66,d-110,'#313b42','rx="20"') + ec(x+w*.83,0,m*.06,m*.06,'#757d80');
+    case 'mirrorcab': return rc(x,y,w,d,c,'rx="18"') + rc(x+30,y+20,w-60,d-40,'#d6edf1','rx="10"') + ln(0,y+20,0,y+d-20);
+    case 'bathrack': { let s = rc(x,y,w,d,c); for (let i=1;i<4;i++) s += ln(x+w*i/4,y+20,x+w*i/4,y+d-20); return s; }
+    case 'robotvac': return ec(0,0,w*.46,d*.46,c) + ec(0,-d*.1,m*.16,m*.16,'#303638') + ec(0,d*.24,m*.045,m*.045,'#7ec4b6');
+    case 'projector': return rc(x,y,w,d,c,'rx="45"') + ec(0,0,m*.2,m*.2,'#253447') + ec(0,0,m*.09,m*.09,'#9dbac7');
+    case 'filecab': return rc(x,y,w,d,c,'rx="15"') + ln(0,y+25,0,y+d-25) + rc(x+w*.15,y+d*.36,w*.7,25,'#858d91');
+    case 'coatstand': { let s = ec(0,0,m*.22,m*.22,c); for(let k=0;k<6;k++){ const a=k*Math.PI/3; s += ln(0,0,Math.cos(a)*m*.42,Math.sin(a)*m*.42); } return s; }
+    case 'dryingrack': { let s = rc(x,y,w,d,'none',DASH); for(let i=0;i<5;i++) s += ln(x+80,y+70+i*(d-140)/4,x+w-80,y+70+i*(d-140)/4); return s; }
     default: return rc(x,y,w,d,c);
   }
 }
 
 /* ======================= 渲染 ======================= */
-const NOLABEL = ['plant','floorlamp','sidetable','barstool','beanbag'];
+const NOLABEL = ['plant','floorlamp','sidetable','barstool','beanbag','robotvac','projector','coatstand'];
 function renderRooms(){
   let s = '';
   ROOMS.forEach(r => s += `<polygon class="room" data-room="${r.id}" points="${r.poly.map(p=>p.join(',')).join(' ')}" fill="url(#m-${state.rooms[r.id].mat})"/>`);
@@ -1352,15 +1388,32 @@ document.addEventListener('keydown', e => {
 });
 
 /* ======================= 家具库 ======================= */
+let libQuery = '';
 function buildLib(){
-  $('#lib').innerHTML = LIB.map((c,ci) => `<h4>${nm(c.cat)}</h4><div class="lib-grid">${c.items.map((it,ii) => {
-    const [t,n,w,d,col] = it, pad = Math.max(w,d)*.08;
-    return `<div class="item" data-key="${ci}:${ii}" title="${tr('点击添加，或拖到平面图中的指定位置', 'Click to add, or drag onto the plan')}">
-      <svg viewBox="${-w/2-pad} ${-d/2-pad} ${w+2*pad} ${d+2*pad}">${furnSVG(t,w,d,col)}</svg><b>${esc(nm(n))}</b><small>${w}×${d}</small></div>`;
-  }).join('')}</div>`).join('') + `<div class="hint">${tr(
+  $('#lib').innerHTML = `<div class="lib-search"><input id="libSearch" type="search" autocomplete="off" aria-label="${tr('搜索家具', 'Search furniture')}" placeholder="${tr('搜索家具、类别或尺寸', 'Search furniture, category or size')}"><small id="libCount"></small></div><div id="libResults"></div>`;
+  $('#libSearch').value = libQuery;
+  $('#libSearch').addEventListener('input', e => { libQuery = e.target.value.trim().toLocaleLowerCase(); filterLib(); });
+  filterLib();
+}
+function filterLib(){
+  const q = libQuery;
+  let count = 0;
+  $('#libResults').innerHTML = LIB.map((cat,ci) => {
+    const cards = cat.items.map((it,ii) => {
+      const [t,n,w,d,col] = it, pad = Math.max(w,d)*.08;
+      const terms = [cat.cat,NAMES_EN[cat.cat],n,NAMES_EN[n],t,`${w}×${d}`,`${w}x${d}`,`${w}`,`${d}`].join(' ').toLocaleLowerCase();
+      if (q && !terms.includes(q)) return '';
+      count++;
+      return `<div class="item" data-key="${ci}:${ii}" title="${tr('点击添加，或拖到平面图中的指定位置', 'Click to add, or drag onto the plan')}">
+        <svg viewBox="${-w/2-pad} ${-d/2-pad} ${w+2*pad} ${d+2*pad}">${furnSVG(t,w,d,col)}</svg><b>${esc(nm(n))}</b><small>${w}×${d}</small></div>`;
+    }).join('');
+    return cards ? `<h4>${nm(cat.cat)}</h4><div class="lib-grid">${cards}</div>` : '';
+  }).join('') + (count ? `<div class="hint">${tr(
     `家具按真实尺寸（mm）绘制。${COARSE ? '点一下放到画面中央，或按住向右拖到平面图 / 3D 地面上的指定位置（上下滑动为滚动列表）。' : '点击添加到画面中央，或直接拖到平面图 / 3D 地面上。'}添加后可在右侧修改宽深与颜色。`,
-    `Furniture is drawn at real size (mm). ${COARSE ? 'Tap to place at the center, or hold and drag right onto the plan / 3D floor (swipe up/down to scroll).' : 'Click to add at the center, or drag onto the plan / 3D floor.'} Edit size and color in the right panel afterwards.`)}</div>`;
-  document.querySelectorAll('.item').forEach(el => el.addEventListener('pointerdown', e => {
+    `Furniture is drawn at real size (mm). ${COARSE ? 'Tap to place at the center, or hold and drag right onto the plan / 3D floor (swipe up/down to scroll).' : 'Click to add at the center, or drag onto the plan / 3D floor.'} Edit size and color in the right panel afterwards.`)}</div>`
+    : `<div class="lib-empty">${tr('没有找到相关家具', 'No matching furniture')}</div>`);
+  $('#libCount').textContent = tr(`${count} 件家具模型`, `${count} furniture models`);
+  document.querySelectorAll('#libResults .item').forEach(el => el.addEventListener('pointerdown', e => {
     if (e.button) return;
     libDrag = {el, id:e.pointerId, sx:e.clientX, sy:e.clientY, it:itemOf(el), ghost:null};
   }));
@@ -2303,6 +2356,135 @@ function buildFurniture(f){
       [-1, 1].forEach(s => g.add(rod([s*(w/2 - .06), .15, bz + .2], [s*(w/2 - .06), 1.15, bz + .3], .025, bm, .022), tube([[s*(w/2 - .06), 1.0, bz + .28], [s*(w/2 - .06), 1.0, bz + .5], [s*(w/2 - .07), .97, bz + .62]], .018, bm)));
       const cg = new THREE.Group(); cg.position.set(0, 1.2, bz + .31); cg.rotation.x = -.5;
       cg.add(rbox(w*.8, .2, .08, bm, 0, -.1, 0, .02), box(w*.4, .11, .004, screenMat('#2a5d8f'), 0, -.055, .041)); g.add(cg);
+      break;
+    }
+    case 'chest': {
+      const wm = woodM(c), h = f.w > 1000 ? .8 : 1.15, rows = f.w > 1000 ? 3 : 5;
+      legs(g, w, d, .08, woodM('#6a5543'), .04, .015);
+      g.add(rbox(w, h - .08, d, wm, 0, .08, 0, .01));
+      fronts(g, -w/2 + .015, .1, w - .03, h - .13, d/2 - .015, f.w > 1000 ? 2 : 1, rows, wm, 'bar');
+      g.add(rbox(w + .02, .025, d + .02, woodM(darker(c,.85)), 0, h - .025, 0, .007));
+      break;
+    }
+    case 'bench': {
+      const wm = woodM('#6b543f');
+      legs(g, w, d, .44, wm, .09, .022);
+      g.add(rbox(w, .08, d, fabric(c), 0, .44, 0, .035));
+      g.add(box(w - .12, .025, d - .1, wm, 0, .39));
+      break;
+    }
+    case 'sofabed': {
+      const fab = fabric(c), dk = fabric(darker(c,.82)), arm = .16, bh = .13;
+      legs(g, w, d, .11, woodM('#4a3a2c'), .07, .018);
+      g.add(rbox(w, .2, d, dk, 0, .11, 0, .04), rbox(w, .65, bh, dk, 0, .14, bz + bh/2, .055));
+      [-1,1].forEach(s => g.add(rbox(arm, .46, d, dk, s*(w/2 - arm/2), .12, 0, .05)));
+      for(let i=0;i<2;i++){
+        const x = (i-.5)*(w-2*arm)/2;
+        g.add(rbox((w-2*arm)/2-.012, .12, d-bh-.06, fab, x, .31, bh/2, .04));
+        g.add(rot(rbox((w-2*arm)/2-.025, .35, .14, fab, x, .38, bz+bh+.04, .05), -.15));
+      }
+      g.add(box(w - .4, .02, .015, '#5e6060', 0, .23, d/2 - .035));
+      break;
+    }
+    case 'displaycase': {
+      const wm = woodM(c), h = 1.85, n = Math.max(1,Math.round(w/.55)), frame = woodM(darker(c,.75));
+      g.add(box(w, .12, d, wm, 0, 0), box(w, .13, d, wm, 0, h-.13), box(w, h-.25, .018, wm, 0, .12, bz+.009));
+      [-1,1].forEach(s => g.add(box(.035,h-.25,d,frame,s*(w/2-.018),.12)));
+      for(let i=1;i<n;i++) g.add(box(.025,h-.25,d,frame,-w/2+i*w/n,.12));
+      for(let j=1;j<4;j++) g.add(box(w-.06,.018,d-.035,glassMat,0,.13+j*(h-.26)/4));
+      const door = box(w-.06,h-.28,.006,glassMat,0,.13,d/2-.003); door.castShadow=false; g.add(door);
+      for(let i=0;i<n;i++){
+        const x=-w/2+(i+.5)*w/n;
+        g.add(box(.012,h-.28,.015,frame,x+w/n*.45,.13,d/2+.005));
+        pull(g,.18,true,x+w/n*.29,.94,d/2+.02);
+      }
+      g.add(box(w-.06,.008,.015,glowMat('#fff9e5','#ffeab1',.7),0,h-.17,bz+.06));
+      break;
+    }
+    case 'pantry': {
+      const cm = mat(c,{roughness:.55}), h = 2.15, z = d/2-.02;
+      g.add(box(w,.08,d-.04,'#4a4641',0,0),box(w,h-.08,d-.02,cm,0,.08));
+      fronts(g,-w/2+.012,.09,w-.024,.66,z,1,2,cm,'bar');
+      fronts(g,-w/2+.012,.78,w-.024,h-.8,z,1,1,cm,'bar',1.3);
+      g.add(rbox(w+.01,.025,d,woodM(darker(c,.86)),0,h-.025,0,.006));
+      break;
+    }
+    case 'microwave': {
+      const body=mat(c,{metalness:.45,roughness:.32}), z=d/2-.003;
+      g.add(rbox(w,.3,d,body,0,.02,0,.025),rbox(w*.7,.22,.008,'#252a2e',-w*.12,.06,z,.008));
+      g.add(box(w*.62,.17,.002,screenMat('#3a4b55'),-w*.12,.085,z+.006));
+      g.add(box(.012,.19,.012,chrome(),w*.24,.075,z+.01));
+      [.11,.19].forEach(y => g.add(cyl(.017,.017,.012,'#7c8589',w*.39,y,z+.005,16)));
+      [-1,1].forEach(s => g.add(box(.07,.015,.06,'#555b5e',s*w*.34,0,s*d*.31)));
+      break;
+    }
+    case 'mirrorcab': {
+      const h=.7, cm=mat(c,{roughness:.45}), z=d/2-.006;
+      g.add(rbox(w,h,d,cm,0,1.3,0,.015));
+      for(let i=0;i<2;i++){
+        const x=(i-.5)*w/2;
+        g.add(box(w/2-.012,h-.04,.004,mirror(),x,1.32,z+.008));
+        g.add(box(.008,h-.04,.01,chrome(),x+(i?-.01:.01),1.32,z+.016));
+      }
+      g.add(box(w-.08,.008,.018,glowMat('#fff8ec','#ffe4b8',.65),0,1.28,z+.01));
+      break;
+    }
+    case 'bathrack': {
+      const cm=chrome();
+      [-1,1].forEach(s => g.add(rod([s*(w/2-.025),.12,bz+.025],[s*(w/2-.025),1.35,bz+.025],.01,cm,.012)));
+      for(let j=0;j<4;j++){
+        const y=.18+j*.34;
+        g.add(box(w,.012,d,mat(c,{metalness:.55,roughness:.3}),0,y));
+        if(j<3){
+          g.add(cyl(.035,.035,.13,mat(['#d9c8b2','#8db4b2','#f6f2eb'][j],{roughness:.3}),-w*.25,y+.012,0,16));
+          g.add(rbox(.16,.035,.13,fabric('#e7e2dc'),w*.2,y+.012,0,.012));
+        }
+      }
+      break;
+    }
+    case 'robotvac': {
+      const r=Math.min(w,d)*.46, shell=mat(c,{roughness:.3,metalness:.25});
+      g.add(cyl(r,r,.09,shell,0,.025,0,48),cyl(r*.8,r*.8,.004,mat('#30383a',{roughness:.25}),0,.119,0,48));
+      g.add(cyl(r*.22,r*.22,.045,'#20282b',0,.12,-r*.18,32));
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(r*.22,.006,8,40),mat('#8cc8bf',{emissive:'#5ec8be',emissiveIntensity:.45}));ring.rotation.x=Math.PI/2;ring.position.set(0,.167,-r*.18);g.add(ring);
+      [-1,1].forEach(s => g.add(box(.04,.018,.06,'#242829',s*r*.7,0,r*.25)));
+      break;
+    }
+    case 'projector': {
+      const pm=mat(c,{roughness:.4}),z=d/2-.005;
+      g.add(rbox(w,.12,d,pm,0,.04,0,.025),cyl(.055,.055,.018,'#293440',0,.09,z,32),cyl(.028,.028,.019,screenMat('#81aac2'),0,.09,z+.02,24));
+      g.add(box(w*.55,.003,d*.18,'#a0a8ad',0,.16,bz+d*.2));
+      [-1,1].forEach(s => g.add(box(.06,.03,.05,'#767d81',s*w*.32,.01,s*d*.3)));
+      break;
+    }
+    case 'filecab': {
+      const fm=mat(c,{metalness:.35,roughness:.4}),h=.9,z=d/2-.014;
+      g.add(box(w,h,d,fm,0,0));
+      fronts(g,-w/2+.01,.04,w-.02,h-.07,z,2,3,fm,'bar');
+      g.add(rbox(w+.01,.015,d+.01,mat(lighter(c,.2),{metalness:.3}),0,h-.015,0,.003));
+      break;
+    }
+    case 'coatstand': {
+      const wm=woodM(c),h=1.7;
+      g.add(cyl(.2,.22,.03,wm,0,0,0,32),rod([0,.03,0],[0,h,0],.028,wm,.025));
+      for(let k=0;k<6;k++){
+        const a=k*Math.PI/3,r=.2;
+        g.add(rod([0,h-.12,0],[Math.cos(a)*r,h+.02,Math.sin(a)*r],.01,wm,.012));
+        g.add(blob(.025,.025,.025,wm,Math.cos(a)*r,h+.02,Math.sin(a)*r,12));
+      }
+      for(let k=0;k<3;k++){
+        const a=k*Math.PI*2/3;
+        g.add(rod([0,.48,0],[Math.cos(a)*.2,.01,Math.sin(a)*.2],.015,wm,.016));
+      }
+      break;
+    }
+    case 'dryingrack': {
+      const cm=mat(c,{metalness:.72,roughness:.26}),z=d/2-.04;
+      [-1,1].forEach(s => {
+        g.add(rod([s*(w/2-.05),0,bz+.04],[s*(w/2-.07),1.25,z],.012,cm,.014));
+        g.add(rod([s*(w/2-.05),0,z],[s*(w/2-.07),1.25,bz+.04],.012,cm,.014));
+      });
+      for(let k=0;k<5;k++) g.add(rod([-w/2+.06,1.25,bz+.08+k*(d-.16)/4],[w/2-.06,1.25,bz+.08+k*(d-.16)/4],.006,cm,.006));
       break;
     }
     default: g.add(box(w, .8, d, c));
