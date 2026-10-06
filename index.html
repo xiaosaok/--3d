@@ -174,7 +174,8 @@ main.animating #hint3d{opacity:0}
 .menu{position:relative}
 .menu summary{list-style:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px}
 .menu summary::-webkit-details-marker{display:none}
-.menu-pop{position:absolute;right:0;top:calc(100% + 6px);display:flex;flex-direction:column;min-width:150px;background:#fff;
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);display:flex;flex-direction:column;min-width:150px;max-width:calc(100vw - 16px);
+  max-height:calc(100dvh - 16px);overflow:auto;overscroll-behavior:contain;background:#fff;
   border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 10px 30px rgba(40,30,20,.14);z-index:20;animation:fadeIn .2s ease}
 .menu-pop .btn{text-align:left}
 .range span{font-variant-numeric:tabular-nums;color:var(--ink)}
@@ -1727,6 +1728,20 @@ $('#fullscreen').onclick = toggleFullscreen;
 if (navigator.standalone || matchMedia('(display-mode: standalone)').matches) $('#fullscreen').hidden = true;
 $('#tgLib').onclick = () => drawer('lib');
 $('#tgPanel').onclick = () => drawer('panel');
+function positionFileMenu(){
+  const menu=$('details.menu'),pop=menu.querySelector('.menu-pop');
+  if(!menu.open){pop.style.position=pop.style.top=pop.style.left=pop.style.right='';return}
+  const anchor=menu.querySelector('summary').getBoundingClientRect();
+  const box=pop.getBoundingClientRect(),vw=innerWidth,vh=innerHeight;
+  const openUp=anchor.bottom+6+box.height>vh-8&&anchor.top-6-box.height>=8;
+  pop.style.position='fixed';pop.style.right='auto';
+  pop.style.top=`${openUp?anchor.top-6-box.height:Math.max(8,Math.min(anchor.bottom+6,vh-8-box.height))}px`;
+  pop.style.left=`${Math.max(8,Math.min(anchor.right-box.width,vw-8-box.width))}px`;
+}
+const fileMenu=$('details.menu');
+fileMenu.querySelector('summary').addEventListener('click',e=>{e.preventDefault();fileMenu.open=!fileMenu.open;positionFileMenu()});
+fileMenu.addEventListener('toggle',positionFileMenu);
+window.addEventListener('resize',positionFileMenu);
 // 触屏上点菜单以外的地方收起「文件」菜单
 document.addEventListener('pointerdown', e => { const m = $('details.menu'); if (m.open && !m.contains(e.target)) m.open = false; });
 matchMedia('(max-width:1100px)').addEventListener('change', () => drawer(null));
