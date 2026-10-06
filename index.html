@@ -35,6 +35,18 @@ header{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 1
 .btn.primary{background:var(--accent);color:#fff}
 .btn.primary:hover{background:#9f5530}
 .btn.danger{color:#b3372a}
+.import-dialog{border:1px solid var(--line);border-radius:16px;padding:0;width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 24px);background:var(--panel);color:var(--ink);box-shadow:0 24px 80px #251b1480}
+.import-dialog::backdrop{background:#211a16a6}
+.import-body{padding:20px;overflow:auto;max-height:calc(100dvh - 24px)}
+.import-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}.import-head h2{font-size:18px;margin:0;flex:1}
+.import-body p{color:var(--muted);margin:6px 0 14px}
+.import-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:10px 0}
+.import-controls label{display:flex;flex-direction:column;gap:3px;color:var(--muted)}
+.import-controls input{width:120px;padding:6px;border:1px solid var(--line);border-radius:6px;background:white}
+.import-controls [hidden]{display:none!important}
+#importPreview{display:block;width:100%;height:min(52vh,430px);background:#f8f6f0;border:1px solid var(--line);border-radius:8px}
+#importStatus{min-height:24px;margin:9px 0;color:var(--muted)}
+.import-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
 .spacer{flex:1}
 aside{background:var(--panel);overflow:auto;border-right:1px solid var(--line)}
 aside.right{border-right:0;border-left:1px solid var(--line)}
@@ -284,10 +296,20 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
         <button class="btn" id="exportPng" data-en="Export image">导出图片</button>
         <button class="btn" id="exportJson" data-en="Export plan JSON">导出方案 JSON</button>
         <button class="btn" id="importJson" data-en="Import plan">导入方案</button>
+        <button class="btn primary" id="importDrawing">上传 JPG / CAD 生成 3D</button>
         <button class="btn danger" id="reset" data-en="Reset to default">重置为默认方案</button>
       </div></details>
     <input type="file" id="fileIn" accept=".json,application/json" hidden>
+    <input type="file" id="drawingIn" accept=".jpg,.jpeg,.png,.dwg,.dxf,image/jpeg,image/png" hidden>
   </header>
+
+  <dialog id="importDialog" class="import-dialog"><div class="import-body">
+    <div class="import-head"><h2>识别平面图</h2><button class="btn" id="closeImport" aria-label="关闭">✕</button></div>
+    <p>上传 JPG、PNG、DWG 或 DXF。仅提取墙体与平面轮廓；生成前可先核对预览。</p>
+    <div class="import-controls"><label id="imageWidthLabel" hidden>图纸实际宽度（米）<input id="imageWidth" type="number" min="2" max="100" step="0.1" value="10"></label><button class="btn" id="retryImport" hidden>重新识别</button></div>
+    <canvas id="importPreview"></canvas><div id="importStatus" role="status"></div>
+    <div class="import-actions"><button class="btn" id="cancelImport">取消</button><button class="btn primary" id="applyImport" disabled>生成 2D / 3D 户型</button></div>
+  </div></dialog>
 
   <aside class="lib">
     <div id="lib3d" class="only3d">
@@ -382,7 +404,7 @@ function applyStaticLang(){
  *  右：3370/240/2760/240/3950 = 10560
  * ============================================================ */
 // 墙体：[x0,y0,x1,y1,类型]  b=承重(黑) e=外墙 n=可拆非承重 low=矮墙
-const WALLS = [
+let WALLS = [
   // 顶部外墙
   [1580,-240,2120,0,'b'],[1580,0,1820,300,'b'],[2120,-240,4580,0,'e'],[4580,-240,5140,0,'e'],
   [5760,-240,6050,0,'e'],[6050,-240,6600,0,'b'],[6360,0,6600,300,'b'],[6600,-240,9960,0,'e'],
@@ -410,7 +432,7 @@ const WALLS = [
   [6083,4600,6323,6610,'n'],[6323,6370,9960,6610,'n'],
 ];
 // 窗
-const WINS = [
+let WINS = [
   [5140,-240,5760,0],[1580,300,1820,3370],[-240,3370,1580,3610],[2180,3825,2420,4430],
   [10510,6370,12090,6610],[11850,6610,12090,9960],
   // 飘窗（主卧 / 子女房）
@@ -418,7 +440,7 @@ const WINS = [
   [10510,4110,11130,4210],[11030,4210,11130,5785],[10510,5785,11130,5885],
 ];
 // 平开门：洞口、铰点、关闭方向、开启方向、门宽
-const DOORS = [
+let DOORS = [
   {name:'小孩房门',rect:[4580,2400,4820,3280],h:[4580,3280],c:[0,-1],o:[-1,0],len:880},
   {name:'主卧门',rect:[6360,2400,6600,3280],h:[6600,3280],c:[0,-1],o:[1,0],len:880},
   {name:'主卫门',rect:[6360,1198,6600,1983],h:[6360,1198],c:[0,1],o:[-1,0],len:785},
@@ -427,12 +449,12 @@ const DOORS = [
   {name:'入户门',rect:[4580,8310,4820,9200],h:[4820,9200],c:[0,-1],o:[1,0],len:890,entry:true},
 ];
 // 推拉门
-const SLIDES = [
+let SLIDES = [
   {rect:[10270,7400,10510,9770],v:true},
   {rect:[1275,4950,2090,5190],v:false},
 ];
 const R = (x0,y0,x1,y1) => [[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
-const ROOMS = [
+let ROOMS = [
   {id:'master', name:'主卧室', poly:R(6600,0,10270,3370), mat:'wood', at:[8435,2420]},
   {id:'mbath', name:'主卫浴', poly:R(4820,0,6360,2080), mat:'antislip', at:[5980,1780]},
   {id:'kid', name:'小孩房', poly:R(1820,0,4580,3370), mat:'wood', at:[3380,2330]},
@@ -447,6 +469,7 @@ const ROOMS = [
   {id:'bay1', name:'主卧飘窗', poly:[[10270,800],[10510,800],[10510,760],[11030,760],[11030,2650],[10510,2650],[10510,2600],[10270,2600]], mat:'marble', counted:false},
   {id:'bay2', name:'子女房飘窗', poly:[[10270,4260],[10510,4260],[10510,4210],[11030,4210],[11030,5785],[10510,5785],[10510,5740],[10270,5740]], mat:'marble', counted:false},
 ];
+const DEFAULT_PLAN = structuredClone({walls:WALLS,wins:WINS,doors:DOORS,slides:SLIDES,rooms:ROOMS});
 const MATS = {
   wood:    {name:'橡木地板', price:320, sw:'#d8b88a'},
   walnut:  {name:'胡桃木地板', price:380, sw:'#9b7250'},
@@ -527,7 +550,7 @@ function defaultFurniture(){ return [
 ];}
 
 function defaultState(){
-  const rooms = {}; ROOMS.forEach(r => rooms[r.id] = {name:r.name, mat:r.mat});
+  const rooms = {}; DEFAULT_PLAN.rooms.forEach(r => rooms[r.id] = {name:r.name, mat:r.mat});
   return {furniture:defaultFurniture(), rooms, demolished:[], measures:[]};
 }
 
@@ -554,6 +577,16 @@ const svg = $('#plan');
 
 /* ======================= 状态 / 历史 / 存储 ======================= */
 let state = load() || defaultState();
+let planRevision = 0, activePlanKey = null;
+function syncPlanGeometry(){
+  const key = JSON.stringify(state.plan || null);
+  if (key === activePlanKey) return;
+  activePlanKey = key; planRevision++;
+  const p = state.plan || DEFAULT_PLAN;
+  WALLS = p.walls; WINS = p.wins || []; DOORS = p.doors || []; SLIDES = p.slides || []; ROOMS = p.rooms;
+  Object.assign(BOUNDS,p.bounds || {x:-1850,y:-1750,w:15600,h:14100});
+  renderOpenings(); renderDims();
+}
 const ui = {tool:'select', sel:null, mA:null, mCur:null,
   layers:{dims:true, labels:true, furn:true, grid:false, bearing:false, wallSnap:true}};
 let view = {x0:0, y0:0, s:.06};
@@ -767,7 +800,7 @@ function renderOpenings(){
     else { const L = x1-x0, m = (y0+y1)/2; s += `<rect x="${x0}" y="${m-45}" width="${L*.55}" height="40" fill="#fff" ${DS}/><rect x="${x1-L*.55}" y="${m+5}" width="${L*.55}" height="40" fill="#fff" ${DS}/>`; }
   });
   // 入户标识
-  s += `<path d="M3350 8755H4350M4150 8600L4400 8755L4150 8910" fill="none" stroke="#b5653a" stroke-width="2" vector-effect="non-scaling-stroke"/>
+  if (!state.plan) s += `<path d="M3350 8755H4350M4150 8600L4400 8755L4150 8910" fill="none" stroke="#b5653a" stroke-width="2" vector-effect="non-scaling-stroke"/>
         <text x="3380" y="8600" font-size="200" fill="#b5653a">${tr('入户','Entry')}</text>`;
   $('#gOpen').innerHTML = s;
 }
@@ -778,11 +811,12 @@ function renderLabels(){
   g.innerHTML = ROOMS.filter(r => r.at).map(r => {
     const [x,y] = r.at, halo = 'stroke="#fbf9f4" stroke-width="45" paint-order="stroke" stroke-linejoin="round"';
     return `<text x="${x}" y="${y}" font-size="250" font-weight="600" text-anchor="middle" fill="#2b2824" ${halo}>${esc(nm(state.rooms[r.id].name))}</text>
-      <text x="${x}" y="${y+260}" font-size="175" text-anchor="middle" fill="#7d7366" ${halo}>${fmt(area(r.poly))} m²</text>`;
+      ${state.plan?'':`<text x="${x}" y="${y+260}" font-size="175" text-anchor="middle" fill="#7d7366" ${halo}>${fmt(area(r.poly))} m²</text>`}`;
   }).join('');
 }
 
 function renderDims(){
+  if (state.plan){ $('#gDims').innerHTML = ''; return; }
   const DC = '#7d7160', LS = `stroke="${DC}" stroke-width="1" vector-effect="non-scaling-stroke"`, TK = `stroke="${DC}" stroke-width="2" vector-effect="non-scaling-stroke"`;
   const txt = (x,y,v,rot) => `<text x="${x}" y="${y}" font-size="${v<400?140:200}" text-anchor="middle" fill="${DC}" ${rot?`transform="rotate(-90 ${x} ${y})"`:''}>${v}</text>`;
   const chain = (horiz, at, start, segs) => {
@@ -852,13 +886,15 @@ function renderSel(){
 }
 
 function renderAll(){
+  syncPlanGeometry();
   renderGrid(); renderRooms(); renderFurn(); renderWalls(); renderLabels(); renderMeasure(); renderSel(); renderPanel(); updateHeader();
   window.View3D?.sync();
 }
 
 function updateHeader(){
   const tot = ROOMS.filter(r => r.counted !== false).reduce((a,r) => a + area(r.poly), 0);
-  $('#subtitle').textContent = tr(`套内使用面积约 ${fmt(tot)} m² · 尺寸单位 mm · 原图比例 1:60`, `Net floor area ≈ ${fmt(tot)} m² · Units: mm · Original scale 1:60`);
+  $('.brand b').textContent = state.plan ? tr('导入户型 · 平面识别','Imported floor plan') : tr('三室两厅两卫 · 装修设计','3BR 2LR 2BA · Interior Design');
+  $('#subtitle').textContent = state.plan ? tr(`已识别 ${WALLS.length} 段墙体 · 尺寸单位 mm`,`${WALLS.length} walls recognized · Units: mm`) : tr(`套内使用面积约 ${fmt(tot)} m² · 尺寸单位 mm · 原图比例 1:60`, `Net floor area ≈ ${fmt(tot)} m² · Units: mm · Original scale 1:60`);
   $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length;
   $('#undo').style.opacity = undoStack.length ? 1 : .4; $('#redo').style.opacity = redoStack.length ? 1 : .4;
 }
@@ -870,6 +906,12 @@ function renderPanel(){
   renderFab();
   const p = $('#panel');
   if (ui.sel?.kind === 'furn'){ const f = getF(ui.sel.id); if (f){ p.innerHTML = furnPanel(f); bindFurnPanel(f); return; } }
+  if (state.plan){
+    p.innerHTML = `<section><h3>${tr('平面图识别','Floor plan recognition')}</h3><p>${esc(state.plan.name||'导入文件')}</p><div class="stats"><div><small>${tr('墙体段数','Wall segments')}</small><span class="big">${WALLS.length}</span></div><div><small>${tr('家具数量','Furniture')}</small><span class="big">${state.furniture.length}</span></div></div><p class="muted">${tr('墙体位置为识别结果；底板仅用于 3D 展示，暂不计算面积或材料费用。','Wall locations are recognized; the floor base is for 3D display only. Area and flooring costs are not calculated.')}</p><div class="actions"><button class="btn" id="clearMeasure">${tr('清除测量','Clear measures')} (${state.measures.length})</button><button class="btn danger" id="clearFurn">${tr('清空布置','Clear layout')}</button></div></section>`;
+    $('#clearMeasure').onclick = () => state.measures.length && mutate(() => state.measures = []);
+    $('#clearFurn').onclick = clearLayout;
+    return;
+  }
   if (ui.sel?.kind === 'room'){ p.innerHTML = roomPanel(ROOMS.find(r => r.id === ui.sel.id)); bindRoomPanel(); return; }
   p.innerHTML = overviewPanel(); bindOverview();
 }
@@ -1472,6 +1514,14 @@ $('#fileIn').onchange = e => {
   e.target.value = '';
 };
 $('#reset').onclick = () => { if (confirm(tr('恢复为默认设计方案？（可撤销）', 'Reset to the default design? (undoable)'))){ const b = snap(); state = defaultState(); ui.sel = null; commit(b); renderAll(); } };
+window.FloorPlanBridge = {
+  apply(plan){
+    const b = snap();
+    state = {furniture:[], rooms:Object.fromEntries(plan.rooms.map(r=>[r.id,{name:r.name,mat:r.mat}])),demolished:[],measures:[],plan};
+    ui.sel = null; commit(b); renderAll(); fitView();
+    if (document.body.classList.contains('m3d')) window.View3D?.fitWhole();
+  }
+};
 // 横竖屏切换、表头换行等都会改变画布尺寸；尺寸从 0 恢复（如首次布局）时重新适应窗口
 // 其余尺寸变化（收起 / 展开面板等）保持画面中心不动
 let lastW = 0, lastH = 0;
@@ -2303,7 +2353,7 @@ function buildArch(){
     colliders.push([wx(w[0]), wz(w[1]), wx(w[2]), wz(w[3])]);
   });
   // 门洞、飘窗洞口上方过梁
-  [...DOORS.map(d => [d.rect, 2.1]), ...SLIDES.map(s => [s.rect, s.v ? 2.4 : 2.1]), [[10270,800,10510,2600], 2.4], [[10270,4260,10510,5740], 2.4]]
+  [...DOORS.map(d => [d.rect, 2.1]), ...SLIDES.map(s => [s.rect, s.v ? 2.4 : 2.1]), ...(!state.plan ? [[[10270,800,10510,2600], 2.4], [[10270,4260,10510,5740], 2.4]] : [])]
     .forEach(([r, h]) => { if (top > h) wallBox(r, h, top); });
   WINS.forEach((r, i) => {
     const sill = i === 0 ? 1.4 : i >= 6 ? .45 : .9, head = 2.4;
@@ -2350,12 +2400,12 @@ function buildLabels(){
   labelG.children.slice().forEach(o => { o.element.remove(); labelG.remove(o); });
   ROOMS.filter(r => r.at).forEach(r => {
     const el = document.createElement('div'); el.className = 'rlabel';
-    el.innerHTML = `${esc(nm(state.rooms[r.id].name))}<small>${area(r.poly).toFixed(1)}m²</small>`;
+    el.innerHTML = `${esc(nm(state.rooms[r.id].name))}${state.plan?'':`<small>${area(r.poly).toFixed(1)}m²</small>`}`;
     const o = new CSS2DObject(el); o.position.set(wx(r.at[0]), opt.cut + .15, wz(r.at[1])); o.visible = labelG.visible; labelG.add(o);
   });
   const counted = ROOMS.filter(r => r.counted !== false);
-  $('#roomList').innerHTML = counted.map(r => `<button data-room="${r.id}"><span>${esc(nm(state.rooms[r.id].name))}</span><small>${area(r.poly).toFixed(2)} m²</small></button>`).join('')
-    + `<button data-room="__all"><span>${tr('全屋', 'Whole home')}</span><small>${counted.reduce((a, r) => a + area(r.poly), 0).toFixed(2)} m²</small></button>`;
+  $('#roomList').innerHTML = counted.map(r => `<button data-room="${r.id}"><span>${esc(nm(state.rooms[r.id].name))}</span>${state.plan?'':`<small>${area(r.poly).toFixed(2)} m²</small>`}</button>`).join('')
+    + `<button data-room="__all"><span>${tr('全屋', 'Whole home')}</span>${state.plan?'':`<small>${counted.reduce((a, r) => a + area(r.poly), 0).toFixed(2)} m²</small>`}</button>`;
   document.querySelectorAll('#roomList button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#roomList button').forEach(x => x.classList.toggle('on', x === b));
     if (opt.mode === 'walk') setMode('orbit');
@@ -2366,7 +2416,7 @@ function buildLabels(){
 // 只重建变化的部分
 function sync(force){
   if (!inited || (!active && !force)) return;
-  const a = JSON.stringify([state.rooms, state.demolished, opt.cut]), f = JSON.stringify(state.furniture), l = JSON.stringify([state.rooms, opt.cut]);
+  const a = JSON.stringify([planRevision, state.rooms, state.demolished, opt.cut]), f = JSON.stringify(state.furniture), l = JSON.stringify([planRevision, state.rooms, opt.cut]);
   if (force || a !== sigArch){ sigArch = a; buildArch(); }
   if (force || f !== sigFurn){ sigFurn = f; buildFurn(); }
   if (force || l !== sigLabels){ sigLabels = l; buildLabels(); }
@@ -2408,11 +2458,11 @@ function planPose(){
   return pose(t, new THREE.Vector3(t.x, dist, t.z + 1e-4));
 }
 function isoFrom(P){
-  const d = THREE.MathUtils.clamp(P.p.y, 5, 30), dir = new THREE.Vector3(.3, .82, .49).normalize();
+  const d = THREE.MathUtils.clamp(Math.max(P.p.y,state.plan ? Math.max(BOUNDS.w,BOUNDS.h)/1000*1.9 : 0), 5, 55), dir = new THREE.Vector3(.3, .82, .49).normalize();
   return pose(P.t.clone(), P.t.clone().addScaledVector(dir, d));
 }
-const isoWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(5.5, 15.5, 10));
-const topWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 19, 1e-4));
+const isoWhole = () => { const f=state.plan ? Math.max(1,BOUNDS.w/12000,BOUNDS.h/12000)*1.4 : 1;return pose(new THREE.Vector3(0,0,0),new THREE.Vector3(5.5*f,15.5*f,10*f)) };
+const topWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, state.plan ? Math.max(19,BOUNDS.w/1000*1.8) : 19, 1e-4));
 const curPose = () => pose(orbit.target.clone(), camera.position.clone());
 // 以目标点为中心做球坐标插值：镜头沿弧线倾斜环绕，而不是直线穿越
 function camTween(A, B, e){
@@ -2658,7 +2708,9 @@ function shot(){ const a = document.createElement('a'); a.download = tr('户型�
 
 function relang(){ syncWalkTexts(); if (inited) buildLabels(); }
 
-window.View3D = {enter, exit, relang, sync:() => sync(), shot, groundAt, flyToRoom:id => active && !anim && flyToRoom(id), walking:() => active && opt.mode === 'walk'};
+window.View3D = {enter, exit, relang, sync:() => sync(), shot, groundAt, flyToRoom:id => active && !anim && flyToRoom(id), fitWhole:()=>active&&flyTo(isoWhole()), walking:() => active && opt.mode === 'walk'};
 </script>
+<script src="./vendor/dxf-parser/dxf-parser.js"></script>
+<script type="module" src="./plan-import.js"></script>
 </body>
 </html>

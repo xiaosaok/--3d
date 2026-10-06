@@ -12,6 +12,8 @@ desktop.ini
 # 依赖与构建产物（如以后引入）
 node_modules/
 dist/
+!vendor/libredwg/dist/
+!vendor/libredwg/dist/libredwg-web.js
 build/
 
 # 日志与临时文件
@@ -23,3 +25,7 @@ tmp/
 # 环境变量
 .env
 .env.*
+
+# 本地导入验证依赖与样例
+.import-deps/
+.dxf-deps/
