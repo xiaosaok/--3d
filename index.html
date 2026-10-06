@@ -245,6 +245,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
       <button class="btn" data-view="2d" data-en="2D Plan">2D 平面</button>
       <button class="btn" data-view="3d" data-en="3D Scene">3D 场景</button>
     </div>
+    <button class="btn primary only2d" id="quickWalk" data-en="Enter 3D Walk">进入3D漫游</button>
     <div class="grp only2d" id="tools">
       <button class="btn on" data-tool="select" title="选择 / 移动 (V)" data-en-title="Select / Move (V)" data-en="Select">选择</button>
       <button class="btn" data-tool="measure" title="测量 (M)" data-en-title="Measure (M)" data-en="Measure">测量</button>
@@ -1461,6 +1462,7 @@ async function setView(m){
 }
 document.querySelectorAll('.menu-pop .btn').forEach(b => b.addEventListener('click', () => b.closest('details').open = false));
 document.querySelectorAll('#viewSeg .btn').forEach(b => b.onclick = () => setView(b.dataset.view));
+$('#quickWalk').onclick = async () => { await setView('3d'); window.View3D?.startWalk(); };
 
 document.querySelectorAll('#tools .btn').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 document.querySelectorAll('#layers .btn').forEach(b => b.onclick = () => {
@@ -2708,7 +2710,7 @@ function shot(){ const a = document.createElement('a'); a.download = tr('户型�
 
 function relang(){ syncWalkTexts(); if (inited) buildLabels(); }
 
-window.View3D = {enter, exit, relang, sync:() => sync(), shot, groundAt, flyToRoom:id => active && !anim && flyToRoom(id), fitWhole:()=>active&&flyTo(isoWhole()), walking:() => active && opt.mode === 'walk'};
+window.View3D = {enter, exit, relang, sync:() => sync(), shot, groundAt, flyToRoom:id => active && !anim && flyToRoom(id), fitWhole:()=>active&&flyTo(isoWhole()), startWalk:()=>active&&!anim&&setMode('walk'), walking:() => active && opt.mode === 'walk'};
 </script>
 <script src="./vendor/dxf-parser/dxf-parser.js"></script>
 <script type="module" src="./plan-import.js"></script>
