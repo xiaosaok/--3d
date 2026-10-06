@@ -314,6 +314,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
         <button class="btn" id="exportJson" data-en="Export plan JSON">导出方案 JSON</button>
         <button class="btn" id="importJson" data-en="Import plan">导入方案</button>
         <button class="btn primary" id="newManual" data-en="New hand-drawn plan">新建手绘户型</button>
+        <button class="btn danger" id="clearOriginalWallsMenu" data-en="Delete original walls">删除原始户型墙体</button>
         <button class="btn primary" id="importDrawing">上传 JPG / CAD 生成 3D</button>
         <button class="btn danger" id="reset" data-en="Reset to default">重置为默认方案</button>
       </div></details>
@@ -953,6 +954,7 @@ function renderAll(){
   if(ui.tool==='draw'&&!state.plan)setTool('select');
   syncPlanGeometry();
   renderGrid(); renderRooms(); renderFurn(); renderWalls(); renderLabels(); renderMeasure(); renderDraw(); renderSel(); renderPanel(); updateHeader();
+  $('#clearOriginalWallsMenu').hidden=sourceWallCount()===0;
   window.View3D?.sync();
 }
 
@@ -975,13 +977,14 @@ function renderPanel(){
   if (state.plan){
     const regions=ROOMS.filter(r=>r.counted!==false);
     const openTool=['door','window','slide'].includes(ui.tool),openSize=state.plan.openingSizes?.[ui.tool]||{door:900,window:1200,slide:1800}[ui.tool];
-    p.innerHTML = `<section><h3>${state.plan.source==='manual'?tr('手绘户型','Hand-drawn plan'):tr('平面图识别','Floor plan recognition')}</h3><p>${esc(state.plan.name||'导入文件')}</p><div class="stats"><div><small>${tr('墙体段数','Wall segments')}</small><span class="big">${WALLS.length}</span></div><div><small>${tr('彩平区域','Colored floor areas')}</small><span class="big">${regions.length}</span></div></div><p class="muted">${tr('画墙后自动填充彩平地面。点选区域可修改材质；边界和面积请核对。','Colored floors update as you draw walls. Select an area to change its finish; check boundaries and areas.')}</p><div class="form"><label>${tr('墙厚','Wall thickness')} (mm)<select id="wallThickness">${[100,120,180,240,300].map(n=>`<option value="${n}" ${n===(state.plan.wallThickness||180)?'selected':''}>${n}</option>`).join('')}</select></label>${openTool?`<label>${tr('开口宽度','Opening width')} (mm)<input id="openingSize" type="number" min="600" max="3600" step="100" value="${openSize}"></label>`:''}</div><div class="actions"><button class="btn primary" id="drawWallPanel">${tr('画墙','Draw walls')}</button><button class="btn" data-plan-tool="door">${tr('平开门','Hinged door')}</button><button class="btn" data-plan-tool="window">${tr('窗','Window')}</button><button class="btn" data-plan-tool="slide">${tr('玻璃移门','Glass slider')}</button><button class="btn" id="autoFloor">${tr('重新填充彩平地面','Refill colored floors')}</button><button class="btn" id="clearMeasure">${tr('清除测量','Clear measures')} (${state.measures.length})</button><button class="btn danger" id="clearFurn">${tr('清空布置','Clear layout')}</button></div></section>
+    p.innerHTML = `<section><h3>${state.plan.source==='manual'?tr('手绘户型','Hand-drawn plan'):tr('平面图识别','Floor plan recognition')}</h3><p>${esc(state.plan.name||'导入文件')}</p><div class="stats"><div><small>${tr('墙体段数','Wall segments')}</small><span class="big">${WALLS.length}</span></div><div><small>${tr('彩平区域','Colored floor areas')}</small><span class="big">${regions.length}</span></div></div><p class="muted">${tr('画墙后自动填充彩平地面。点选区域可修改材质；边界和面积请核对。','Colored floors update as you draw walls. Select an area to change its finish; check boundaries and areas.')}</p><div class="form"><label>${tr('墙厚','Wall thickness')} (mm)<select id="wallThickness">${[100,120,180,240,300].map(n=>`<option value="${n}" ${n===(state.plan.wallThickness||180)?'selected':''}>${n}</option>`).join('')}</select></label>${openTool?`<label>${tr('开口宽度','Opening width')} (mm)<input id="openingSize" type="number" min="600" max="3600" step="100" value="${openSize}"></label>`:''}</div><div class="actions"><button class="btn primary" id="drawWallPanel">${tr('画墙','Draw walls')}</button><button class="btn" data-plan-tool="door">${tr('平开门','Hinged door')}</button><button class="btn" data-plan-tool="window">${tr('窗','Window')}</button><button class="btn" data-plan-tool="slide">${tr('玻璃移门','Glass slider')}</button><button class="btn" id="autoFloor">${tr('重新填充彩平地面','Refill colored floors')}</button>${sourceWallCount()?`<button class="btn danger" id="clearOriginalWalls">${tr('删除原始户型墙体','Delete original walls')}</button>`:''}<button class="btn" id="clearMeasure">${tr('清除测量','Clear measures')} (${state.measures.length})</button><button class="btn danger" id="clearFurn">${tr('清空布置','Clear layout')}</button></div></section>
       <section><h3>${tr('地面区域','Floor areas')}</h3><table>${regions.map(r=>`<tr class="click" data-room="${r.id}"><td><span class="sw" style="background:${MATS[state.rooms[r.id].mat].sw}"></span>${esc(nm(state.rooms[r.id].name))}</td><td class="r">${fmt(area(r.poly))} m²</td></tr>`).join('')||`<tr><td class="muted">${tr('未识别到封闭区域','No enclosed areas detected')}</td></tr>`}</table></section>`;
     $('#wallThickness').onchange=e=>mutate(()=>state.plan.wallThickness=Number(e.target.value));
     if(openTool)$('#openingSize').onchange=e=>mutate(()=>{state.plan.openingSizes??={};state.plan.openingSizes[ui.tool]=Math.max(600,Math.min(3600,Math.round(Number(e.target.value)/100)*100||openSize))});
     $('#drawWallPanel').onclick=()=>setTool('draw');
     document.querySelectorAll('#panel [data-plan-tool]').forEach(el=>el.onclick=()=>setTool(el.dataset.planTool));
     $('#autoFloor').onclick=()=>window.AutoFloorRooms && window.FloorPlanBridge.fillFloors(window.AutoFloorRooms(WALLS));
+    if($('#clearOriginalWalls'))$('#clearOriginalWalls').onclick=clearOriginalWalls;
     $('#clearMeasure').onclick = () => state.measures.length && mutate(() => state.measures = []);
     $('#clearFurn').onclick = clearLayout;
     document.querySelectorAll('#panel tr[data-room]').forEach(el=>el.onclick=()=>select({kind:'room',id:el.dataset.room}));
@@ -1015,7 +1018,7 @@ function overviewPanel(){
   <section><h3>${tr('方案统计','Plan Stats')}</h3>
     <div class="stats"><div><small>${tr('家具数量','Furniture')}</small><span class="big">${state.furniture.length}</span></div>
       <div><small>${tr('拆除墙体','Walls removed')}</small><span class="big">${fmt(demLen,1)}</span> m</div></div>
-    <div class="actions"><button class="btn" id="clearMeasure">${tr('清除测量','Clear measures')} (${state.measures.length})</button>
+    <div class="actions"><button class="btn danger" id="clearOriginalWalls">${tr('删除原始户型墙体','Delete original walls')}</button><button class="btn" id="clearMeasure">${tr('清除测量','Clear measures')} (${state.measures.length})</button>
       <button class="btn danger" id="clearFurn">${tr('清空布置','Clear layout')}</button></div></section>
   ${COARSE ? tr(`<section><h3>触屏操作</h3><div class="kbd">
     <kbd>单指拖动</kbd><span>空白处平移画面</span><kbd>双指</kbd><span>捏合缩放、拖动平移</span>
@@ -1044,6 +1047,7 @@ function overviewPanel(){
 }
 function bindOverview(){
   document.querySelectorAll('#panel tr[data-room]').forEach(tr => tr.onclick = () => { select({kind:'room', id:tr.dataset.room}); if (is3D()) window.View3D.flyToRoom(tr.dataset.room); });
+  $('#clearOriginalWalls').onclick = clearOriginalWalls;
   $('#clearMeasure').onclick = () => state.measures.length && mutate(() => state.measures = []);
   $('#clearFurn').onclick = clearLayout;
 }
@@ -1071,6 +1075,44 @@ function clearLayout(){
   ui.sel = null; mutate(() => state.furniture = []);
   toast(tr('已清空布置，可点「撤销」恢复', 'Layout cleared — Undo to restore'));
 }
+function sourceWallCount(){
+  return state.plan ? state.plan.walls.filter(w=>w[4]!=='n').length : DEFAULT_PLAN.walls.length;
+}
+function openingWallKind(kind,item){
+  const own=kind==='window'?item[4]:item.wallKind;
+  if(own)return own;
+  const r=kind==='window'?item:item.rect,h=r[2]-r[0]>=r[3]-r[1];
+  const old=state.plan?.walls.some(w=>{
+    if(w[4]!=='e')return false;
+    const wh=w[2]-w[0]>=w[3]-w[1];if(wh!==h)return false;
+    return h?Math.abs((w[1]+w[3]-r[1]-r[3])/2)<150&&(Math.abs(w[2]-r[0])<180||Math.abs(w[0]-r[2])<180)
+      :Math.abs((w[0]+w[2]-r[0]-r[2])/2)<150&&(Math.abs(w[3]-r[1])<180||Math.abs(w[1]-r[3])<180);
+  });
+  return old?'e':'n';
+}
+function clearOriginalWalls(){
+  const count=sourceWallCount();
+  if(!count)return toast(tr('没有可删除的原始墙体','No original walls to delete'));
+  if(!confirm(tr(`删除 ${count} 段原始墙体及其门窗？手绘墙、家具会保留，可点“撤销”恢复。`, `Delete ${count} original wall segments and their openings? Hand-drawn walls and furniture stay; Undo can restore them.`)))return;
+  mutate(()=>{
+    if(!state.plan){
+      state.plan={source:'manual',name:'我的手绘户型',walls:[],wins:[],doors:[],slides:[],rooms:[],wallThickness:180,bounds:{...BOUNDS}};
+    }else{
+      const p=state.plan;
+      p.doors=(p.doors||[]).filter(d=>openingWallKind('door',d)!=='e');
+      p.wins=(p.wins||[]).filter(w=>openingWallKind('window',w)!=='e');
+      p.slides=(p.slides||[]).filter(s=>openingWallKind('slide',s)!=='e');
+      p.walls=p.walls.filter(w=>w[4]==='n');
+      p.source='manual';
+    }
+    state.demolished=[];ui.sel=null;recomputePlanRooms();
+  });
+  $('details.menu').open=false;
+  if(is3D())setView('2d');
+  setTool('draw');
+  toast(tr(`已删除 ${count} 段原始墙体，可撤销恢复`,`Deleted ${count} original wall segments; Undo to restore`));
+}
+$('#clearOriginalWallsMenu').onclick=clearOriginalWalls;
 
 /* 侧栏开合：which = 'lib' | 'panel' | null，open 不传则切换。
  * 宽屏：侧栏在布局中收起 / 展开（记住选择）；窄屏：侧栏是浮层抽屉，一次只开一个，which = null 表示全部关闭 */
@@ -1214,9 +1256,9 @@ function placeOpening(kind,index,p){
   const right=h?[b,wall[1],wall[2],wall[3],wall[4]]:[wall[0],b,wall[2],wall[3],wall[4]];
   mutate(()=>{
     state.plan.walls.splice(index,1,left,right);state.demolished=[];
-    if(kind==='door')state.plan.doors.push({name:'手绘门',rect,h:h?[a,(wall[1]+wall[3])/2]:[(wall[0]+wall[2])/2,a],c:h?[1,0]:[0,1],o:h?[0,1]:[1,0],len:size});
-    else if(kind==='window')state.plan.wins.push(rect);
-    else state.plan.slides.push({rect,v:!h});
+    if(kind==='door')state.plan.doors.push({name:'手绘门',rect,h:h?[a,(wall[1]+wall[3])/2]:[(wall[0]+wall[2])/2,a],c:h?[1,0]:[0,1],o:h?[0,1]:[1,0],len:size,wallKind:wall[4]});
+    else if(kind==='window')state.plan.wins.push([...rect,wall[4]]);
+    else state.plan.slides.push({rect,v:!h,wallKind:wall[4]});
     recomputePlanRooms();
   });
   toast(tr(`已添加${{door:'平开门',window:'窗',slide:'玻璃移门'}[kind]} ${size} mm`,`Added ${kind} ${size} mm`));
@@ -1226,7 +1268,7 @@ function removeOpening(kind,index){
   mutate(()=>{
     const list=kind==='door'?state.plan.doors:kind==='window'?state.plan.wins:state.plan.slides;
     const item=list.splice(index,1)[0],r=kind==='window'?item:item.rect;
-    state.plan.walls.push([...r,'n']);state.demolished=[];recomputePlanRooms();
+    state.plan.walls.push([...r.slice(0,4),openingWallKind(kind,item)]);state.demolished=[];recomputePlanRooms();
   });
   toast(tr('已删除开口并恢复墙体','Opening removed and wall restored'));
 }
