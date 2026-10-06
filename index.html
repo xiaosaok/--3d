@@ -73,6 +73,11 @@ main{position:relative;overflow:hidden;background:var(--paper)}
 #plan{width:100%;height:100%;display:block;touch-action:none;cursor:default}
 #plan.panning{cursor:grabbing}
 #plan.tool-measure{cursor:crosshair}
+#plan.tool-draw{cursor:crosshair}
+#plan.tool-door .wall,#plan.tool-window .wall,#plan.tool-slide .wall{pointer-events:all;cursor:crosshair}
+.opening-hit{pointer-events:none}
+#plan.tool-demolish .opening-hit{pointer-events:all;cursor:pointer}
+#plan.tool-demolish [data-door],#plan.tool-demolish [data-win],#plan.tool-demolish [data-slide]{cursor:pointer}
 #plan .wall{pointer-events:none}
 #plan.tool-demolish .wall{pointer-events:all;cursor:pointer}
 #plan.tool-demolish .wall:hover{fill:#d9894f}
@@ -110,6 +115,7 @@ tr.click:hover td{background:#faf5ee}
 .form input[type=color]{padding:2px;height:30px}
 .actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .actions .btn{border:1px solid var(--line);background:#fff}
+.actions .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .mats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .mat{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff;cursor:pointer;text-align:left}
 .mat.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
@@ -254,6 +260,10 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
     <button class="btn primary only2d" id="quickWalk" data-en="Enter 3D Walk">进入3D漫游</button>
     <div class="grp only2d" id="tools">
       <button class="btn on" data-tool="select" title="选择 / 移动 (V)" data-en-title="Select / Move (V)" data-en="Select">选择</button>
+      <button class="btn" data-tool="draw" title="画墙 (W)" data-en-title="Draw walls (W)" data-en="Draw walls">画墙</button>
+      <button class="btn" data-tool="door" title="点击墙体添加门" data-en-title="Click a wall to add a door" data-en="Door">门</button>
+      <button class="btn" data-tool="window" title="点击墙体添加窗" data-en-title="Click a wall to add a window" data-en="Window">窗</button>
+      <button class="btn" data-tool="slide" title="点击墙体添加玻璃移门" data-en-title="Click a wall to add a glass sliding door" data-en="Glass slider">玻璃移门</button>
       <button class="btn" data-tool="measure" title="测量 (M)" data-en-title="Measure (M)" data-en="Measure">测量</button>
       <button class="btn" data-tool="demolish" title="拆改非承重墙 (X)" data-en-title="Demolish non-bearing walls (X)" data-en="Demolish">拆改墙体</button>
     </div>
@@ -303,6 +313,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
         <button class="btn" id="exportPng" data-en="Export image">导出图片</button>
         <button class="btn" id="exportJson" data-en="Export plan JSON">导出方案 JSON</button>
         <button class="btn" id="importJson" data-en="Import plan">导入方案</button>
+        <button class="btn primary" id="newManual" data-en="New hand-drawn plan">新建手绘户型</button>
         <button class="btn primary" id="importDrawing">上传 JPG / CAD 生成 3D</button>
         <button class="btn danger" id="reset" data-en="Reset to default">重置为默认方案</button>
       </div></details>
@@ -312,7 +323,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
 
   <dialog id="importDialog" class="import-dialog"><div class="import-body">
     <div class="import-head"><h2>识别平面图</h2><button class="btn" id="closeImport" aria-label="关闭">✕</button></div>
-    <p>上传 JPG、PNG、DWG 或 DXF。仅提取墙体与平面轮廓；生成前可先核对预览。</p>
+    <p>上传 JPG、PNG、DWG 或 DXF。自动识别墙线并填充彩平地面；生成前可先核对预览。</p>
     <div class="import-controls"><label id="imageWidthLabel" hidden>图纸实际宽度（米）<input id="imageWidth" type="number" min="2" max="100" step="0.1" value="10"></label><button class="btn" id="retryImport" hidden>重新识别</button></div>
     <canvas id="importPreview"></canvas><div id="importStatus" role="status"></div>
     <div class="import-actions"><button class="btn" id="cancelImport">取消</button><button class="btn primary" id="applyImport" disabled>生成 2D / 3D 户型</button></div>
@@ -337,6 +348,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
       <g id="gLabels" pointer-events="none"></g>
       <g id="gDims" pointer-events="none"></g>
       <g id="gMeasure" pointer-events="none"></g>
+      <g id="gDraw" pointer-events="none"></g>
       <g id="gSel"></g>
     </svg>
     <div id="view3d">
@@ -398,7 +410,7 @@ const NAMES_EN = {
   '换鞋凳':'Entry Bench', '晾衣架':'Drying Rack', '折叠晾衣架':'Folding Drying Rack', '小餐边柜':'Small Sideboard',
   '窄书架':'Narrow Bookshelf', '床尾凳':'Bed Bench', '小地毯':'Small Rug', '单人浴缸':'Compact Bathtub',
 };
-const nm = s => LANG === 'en' ? (NAMES_EN[s] ?? s) : s;
+const nm = s => LANG === 'en' ? (NAMES_EN[s] ?? (/^区域 (\d+)$/.test(s) ? `Area ${s.match(/^区域 (\d+)$/)[1]}` : s)) : s;
 // 静态文案：元素上写 data-en / data-en-title，中文原文首次切换时存进 dataset
 function applyStaticLang(){
   document.documentElement.lang = tr('zh-CN', 'en');
@@ -611,7 +623,7 @@ function syncPlanGeometry(){
   Object.assign(BOUNDS,p.bounds || {x:-1850,y:-1750,w:15600,h:14100});
   renderOpenings(); renderDims();
 }
-const ui = {tool:'select', sel:null, mA:null, mCur:null,
+const ui = {tool:'select', sel:null, mA:null, mCur:null, drawA:null, drawCur:null,
   layers:{dims:true, labels:true, furn:true, grid:false, bearing:false, wallSnap:true}};
 let view = {x0:0, y0:0, s:.06};
 const undoStack = [], redoStack = [];
@@ -620,8 +632,8 @@ function save(){ try { localStorage.setItem(STORE, JSON.stringify(state)); } cat
 const snap = () => JSON.stringify(state);
 function commit(before){ undoStack.push(before); if (undoStack.length > 150) undoStack.shift(); redoStack.length = 0; save(); }
 function mutate(fn){ const b = snap(); fn(); commit(b); renderAll(); }
-function undo(){ if (!undoStack.length) return toast(tr('没有可撤销的操作', 'Nothing to undo')); redoStack.push(snap()); state = JSON.parse(undoStack.pop()); validateSel(); save(); renderAll(); }
-function redo(){ if (!redoStack.length) return; undoStack.push(snap()); state = JSON.parse(redoStack.pop()); validateSel(); save(); renderAll(); }
+function undo(){ if (!undoStack.length) return toast(tr('没有可撤销的操作', 'Nothing to undo')); redoStack.push(snap()); state = JSON.parse(undoStack.pop()); ui.drawA=ui.drawCur=null; validateSel(); save(); renderAll(); }
+function redo(){ if (!redoStack.length) return; undoStack.push(snap()); state = JSON.parse(redoStack.pop()); ui.drawA=ui.drawCur=null; validateSel(); save(); renderAll(); }
 function validateSel(){ if (ui.sel?.kind==='furn' && !getF(ui.sel.id)) ui.sel = null; }
 const getF = id => state.furniture.find(f => f.id === id);
 
@@ -787,7 +799,7 @@ function furnSVG(t,w,d,c){
 const NOLABEL = ['plant','floorlamp','sidetable','barstool','beanbag','robotvac','projector','coatstand'];
 function renderRooms(){
   let s = '';
-  ROOMS.forEach(r => s += `<polygon class="room" data-room="${r.id}" points="${r.poly.map(p=>p.join(',')).join(' ')}" fill="url(#m-${state.rooms[r.id].mat})"/>`);
+  ROOMS.forEach(r => s += `<polygon class="room" data-room="${r.id}" points="${r.poly.map(p=>p.join(',')).join(' ')}" fill="url(#m-${state.rooms[r.id].mat})"${r.id==='auto-base'?' pointer-events="none"':''}/>`);
   const sill = ([a,b,c,d]) => `<rect x="${a}" y="${b}" width="${c-a}" height="${d-b}" fill="#e2dacb" stroke="#b9b0a0" stroke-width="1" vector-effect="non-scaling-stroke" pointer-events="none"/>`;
   DOORS.forEach(d => s += sill(d.rect)); SLIDES.forEach(d => s += sill(d.rect));
   $('#gRooms').innerHTML = s;
@@ -817,24 +829,27 @@ function renderWalls(){
 function renderOpenings(){
   const WS = 'stroke="#4f7394" stroke-width="1" vector-effect="non-scaling-stroke"';
   let s = '';
-  WINS.forEach(([x0,y0,x1,y1]) => {
+  WINS.forEach(([x0,y0,x1,y1],i) => {
     const w = x1-x0, h = y1-y0;
-    s += `<rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="#f7fbfd" ${WS}/>`;
+    s += `<g data-win="${i}"><rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="#f7fbfd" ${WS}/>`;
     if (w >= h) [1/3,2/3].forEach(t => s += `<line x1="${x0}" y1="${y0+h*t}" x2="${x1}" y2="${y0+h*t}" ${WS}/>`);
     else [1/3,2/3].forEach(t => s += `<line x1="${x0+w*t}" y1="${y0}" x2="${x0+w*t}" y2="${y1}" ${WS}/>`);
+    s += '</g>';
   });
   const DS = 'stroke="#3d3a34" stroke-width="1" vector-effect="non-scaling-stroke"';
-  DOORS.forEach(d => {
+  DOORS.forEach((d,i) => {
     const [hx,hy] = d.h, L = d.len, T = 40;
     const ox = hx + d.o[0]*L, oy = hy + d.o[1]*L, cx = hx + d.c[0]*L, cy = hy + d.c[1]*L;
     const sweep = d.o[0]*d.c[1] - d.o[1]*d.c[0] > 0 ? 1 : 0;
     const col = d.entry ? '#b5653a' : '#3d3a34';
-    s += `<polygon points="${hx},${hy} ${ox},${oy} ${ox+d.c[0]*T},${oy+d.c[1]*T} ${hx+d.c[0]*T},${hy+d.c[1]*T}" fill="#fff" stroke="${col}" stroke-width="${d.entry?1.8:1}" vector-effect="non-scaling-stroke"/>`;
-    s += `<path d="M${ox} ${oy}A${L} ${L} 0 0 ${sweep} ${cx} ${cy}" fill="none" ${DS} stroke-dasharray="5 3" opacity=".7"/>`;
+    s += `<g data-door="${i}"><polygon points="${hx},${hy} ${ox},${oy} ${ox+d.c[0]*T},${oy+d.c[1]*T} ${hx+d.c[0]*T},${hy+d.c[1]*T}" fill="#fff" stroke="${col}" stroke-width="${d.entry?1.8:1}" vector-effect="non-scaling-stroke"/>`;
+    s += `<path d="M${ox} ${oy}A${L} ${L} 0 0 ${sweep} ${cx} ${cy}" fill="none" ${DS} stroke-dasharray="5 3" opacity=".7"/></g>`;
   });
-  SLIDES.forEach(({rect:[x0,y0,x1,y1],v}) => {
+  SLIDES.forEach(({rect:[x0,y0,x1,y1],v},i) => {
+    s += `<g data-slide="${i}">`;
     if (v){ const L = y1-y0, m = (x0+x1)/2; s += `<rect x="${m-45}" y="${y0}" width="40" height="${L*.55}" fill="#fff" ${DS}/><rect x="${m+5}" y="${y1-L*.55}" width="40" height="${L*.55}" fill="#fff" ${DS}/>`; }
     else { const L = x1-x0, m = (y0+y1)/2; s += `<rect x="${x0}" y="${m-45}" width="${L*.55}" height="40" fill="#fff" ${DS}/><rect x="${x1-L*.55}" y="${m+5}" width="${L*.55}" height="40" fill="#fff" ${DS}/>`; }
+    s += `<rect class="opening-hit" x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" fill="transparent"/></g>`;
   });
   // 入户标识
   if (!state.plan) s += `<path d="M3350 8755H4350M4150 8600L4400 8755L4150 8910" fill="none" stroke="#b5653a" stroke-width="2" vector-effect="non-scaling-stroke"/>
@@ -895,6 +910,18 @@ function renderMeasure(){
   if (ui.mA) s += `<circle cx="${ui.mA.x}" cy="${ui.mA.y}" r="${3*k}" fill="#2f5d62"/>`;
   $('#gMeasure').innerHTML = s;
 }
+function renderDraw(){
+  const g=$('#gDraw'),a=ui.drawA||drag?.kind==='draw'&&drag.start,b=drag?.kind==='draw'?drag.current:ui.drawCur;
+  if(ui.tool!=='draw'||!a){g.innerHTML='';return}
+  const t=state.plan?.wallThickness||180,k=1/view.s;
+  let s=`<circle cx="${a.x}" cy="${a.y}" r="${6*k}" fill="#b5653a" stroke="#fff" stroke-width="${2*k}"/>`;
+  if(b&&Math.hypot(b.x-a.x,b.y-a.y)>=100){
+    const h=a.y===b.y,x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=h?Math.abs(b.x-a.x):t,d=h?t:Math.abs(b.y-a.y);
+    s+=`<rect x="${h?x:x-t/2}" y="${h?y-t/2:y}" width="${w}" height="${d}" fill="#b5653a" fill-opacity=".55" stroke="#9b4e2b" stroke-width="${2*k}"/>`;
+    s+=`<text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-12*k}" text-anchor="middle" font-size="${13*k}" fill="#863e23" stroke="#fff" stroke-width="${3*k}" paint-order="stroke">${Math.round(Math.hypot(b.x-a.x,b.y-a.y))} mm</text>`;
+  }
+  g.innerHTML=s;
+}
 
 function renderSel(){
   const k = 1/view.s; let s = '';
@@ -923,15 +950,16 @@ function renderSel(){
 }
 
 function renderAll(){
+  if(ui.tool==='draw'&&!state.plan)setTool('select');
   syncPlanGeometry();
-  renderGrid(); renderRooms(); renderFurn(); renderWalls(); renderLabels(); renderMeasure(); renderSel(); renderPanel(); updateHeader();
+  renderGrid(); renderRooms(); renderFurn(); renderWalls(); renderLabels(); renderMeasure(); renderDraw(); renderSel(); renderPanel(); updateHeader();
   window.View3D?.sync();
 }
 
 function updateHeader(){
   const tot = ROOMS.filter(r => r.counted !== false).reduce((a,r) => a + area(r.poly), 0);
-  $('.brand b').textContent = state.plan ? tr('导入户型 · 平面识别','Imported floor plan') : tr('三室两厅两卫 · 装修设计','3BR 2LR 2BA · Interior Design');
-  $('#subtitle').textContent = state.plan ? tr(`已识别 ${WALLS.length} 段墙体 · 尺寸单位 mm`,`${WALLS.length} walls recognized · Units: mm`) : tr(`套内使用面积约 ${fmt(tot)} m² · 尺寸单位 mm · 原图比例 1:60`, `Net floor area ≈ ${fmt(tot)} m² · Units: mm · Original scale 1:60`);
+  $('.brand b').textContent = state.plan?.source==='manual' ? tr('手绘户型 · 彩平设计','Hand-drawn floor plan') : state.plan ? tr('导入户型 · 平面识别','Imported floor plan') : tr('三室两厅两卫 · 装修设计','3BR 2LR 2BA · Interior Design');
+  $('#subtitle').textContent = state.plan ? tr(`${state.plan.source==='manual'?'已绘制':'已识别'} ${WALLS.length} 段墙体 · 尺寸单位 mm`,`${WALLS.length} walls · Units: mm`) : tr(`套内使用面积约 ${fmt(tot)} m² · 尺寸单位 mm · 原图比例 1:60`, `Net floor area ≈ ${fmt(tot)} m² · Units: mm · Original scale 1:60`);
   $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length;
   $('#undo').style.opacity = undoStack.length ? 1 : .4; $('#redo').style.opacity = redoStack.length ? 1 : .4;
 }
@@ -943,13 +971,22 @@ function renderPanel(){
   renderFab();
   const p = $('#panel');
   if (ui.sel?.kind === 'furn'){ const f = getF(ui.sel.id); if (f){ p.innerHTML = furnPanel(f); bindFurnPanel(f); return; } }
+  if (ui.sel?.kind === 'room'){ p.innerHTML = roomPanel(ROOMS.find(r => r.id === ui.sel.id)); bindRoomPanel(); return; }
   if (state.plan){
-    p.innerHTML = `<section><h3>${tr('平面图识别','Floor plan recognition')}</h3><p>${esc(state.plan.name||'导入文件')}</p><div class="stats"><div><small>${tr('墙体段数','Wall segments')}</small><span class="big">${WALLS.length}</span></div><div><small>${tr('家具数量','Furniture')}</small><span class="big">${state.furniture.length}</span></div></div><p class="muted">${tr('墙体位置为识别结果；底板仅用于 3D 展示，暂不计算面积或材料费用。','Wall locations are recognized; the floor base is for 3D display only. Area and flooring costs are not calculated.')}</p><div class="actions"><button class="btn" id="clearMeasure">${tr('清除测量','Clear measures')} (${state.measures.length})</button><button class="btn danger" id="clearFurn">${tr('清空布置','Clear layout')}</button></div></section>`;
+    const regions=ROOMS.filter(r=>r.counted!==false);
+    const openTool=['door','window','slide'].includes(ui.tool),openSize=state.plan.openingSizes?.[ui.tool]||{door:900,window:1200,slide:1800}[ui.tool];
+    p.innerHTML = `<section><h3>${state.plan.source==='manual'?tr('手绘户型','Hand-drawn plan'):tr('平面图识别','Floor plan recognition')}</h3><p>${esc(state.plan.name||'导入文件')}</p><div class="stats"><div><small>${tr('墙体段数','Wall segments')}</small><span class="big">${WALLS.length}</span></div><div><small>${tr('彩平区域','Colored floor areas')}</small><span class="big">${regions.length}</span></div></div><p class="muted">${tr('画墙后自动填充彩平地面。点选区域可修改材质；边界和面积请核对。','Colored floors update as you draw walls. Select an area to change its finish; check boundaries and areas.')}</p><div class="form"><label>${tr('墙厚','Wall thickness')} (mm)<select id="wallThickness">${[100,120,180,240,300].map(n=>`<option value="${n}" ${n===(state.plan.wallThickness||180)?'selected':''}>${n}</option>`).join('')}</select></label>${openTool?`<label>${tr('开口宽度','Opening width')} (mm)<input id="openingSize" type="number" min="600" max="3600" step="100" value="${openSize}"></label>`:''}</div><div class="actions"><button class="btn primary" id="drawWallPanel">${tr('画墙','Draw walls')}</button><button class="btn" data-plan-tool="door">${tr('平开门','Hinged door')}</button><button class="btn" data-plan-tool="window">${tr('窗','Window')}</button><button class="btn" data-plan-tool="slide">${tr('玻璃移门','Glass slider')}</button><button class="btn" id="autoFloor">${tr('重新填充彩平地面','Refill colored floors')}</button><button class="btn" id="clearMeasure">${tr('清除测量','Clear measures')} (${state.measures.length})</button><button class="btn danger" id="clearFurn">${tr('清空布置','Clear layout')}</button></div></section>
+      <section><h3>${tr('地面区域','Floor areas')}</h3><table>${regions.map(r=>`<tr class="click" data-room="${r.id}"><td><span class="sw" style="background:${MATS[state.rooms[r.id].mat].sw}"></span>${esc(nm(state.rooms[r.id].name))}</td><td class="r">${fmt(area(r.poly))} m²</td></tr>`).join('')||`<tr><td class="muted">${tr('未识别到封闭区域','No enclosed areas detected')}</td></tr>`}</table></section>`;
+    $('#wallThickness').onchange=e=>mutate(()=>state.plan.wallThickness=Number(e.target.value));
+    if(openTool)$('#openingSize').onchange=e=>mutate(()=>{state.plan.openingSizes??={};state.plan.openingSizes[ui.tool]=Math.max(600,Math.min(3600,Math.round(Number(e.target.value)/100)*100||openSize))});
+    $('#drawWallPanel').onclick=()=>setTool('draw');
+    document.querySelectorAll('#panel [data-plan-tool]').forEach(el=>el.onclick=()=>setTool(el.dataset.planTool));
+    $('#autoFloor').onclick=()=>window.AutoFloorRooms && window.FloorPlanBridge.fillFloors(window.AutoFloorRooms(WALLS));
     $('#clearMeasure').onclick = () => state.measures.length && mutate(() => state.measures = []);
     $('#clearFurn').onclick = clearLayout;
+    document.querySelectorAll('#panel tr[data-room]').forEach(el=>el.onclick=()=>select({kind:'room',id:el.dataset.room}));
     return;
   }
-  if (ui.sel?.kind === 'room'){ p.innerHTML = roomPanel(ROOMS.find(r => r.id === ui.sel.id)); bindRoomPanel(); return; }
   p.innerHTML = overviewPanel(); bindOverview();
 }
 
@@ -1076,7 +1113,7 @@ function roomPanel(r){
       <div><small>${tr('进深','Depth')}</small><span class="big">${y1-y0}</span> mm</div></div>
     <div class="muted">${tr(`墙面面积（层高 2.8m，未扣门窗）约 ${fmt(perim(r.poly)*2.8,1)} m²`, `Wall area (2.8m ceiling, openings not deducted) ≈ ${fmt(perim(r.poly)*2.8,1)} m²`)}</div></section>
   <section><h3>${tr('地面材料','Flooring')}</h3><div class="mats">${mats}</div>
-    <div class="total"><span>${tr('材料估价','Estimated cost')}</span><b>¥${Math.round(a*MATS[st.mat].price*1.05).toLocaleString()}</b></div></section>
+    ${state.plan?`<p class="muted">${tr('区域面积由墙线推算，请结合原图核对。','Area is inferred from walls; check against the drawing.')}</p>`:`<div class="total"><span>${tr('材料估价','Estimated cost')}</span><b>¥${Math.round(a*MATS[st.mat].price*1.05).toLocaleString()}</b></div>`}</section>
   <section><h3>${tr('房间内家具','Furniture in room')} <small>${tr(`${inside.length} 件`, `${inside.length} items`)}</small></h3>
     <table>${inside.map(f => `<tr class="click" data-fid="${f.id}"><td>${esc(nm(f.name))}</td><td class="r muted">${f.w}×${f.d}</td></tr>`).join('') || `<tr><td class="muted">${tr('暂无','None')}</td></tr>`}</table>
     <div class="actions"><button class="btn" id="back">${tr('← 返回总览','← Back to overview')}</button></div></section>`;
@@ -1156,25 +1193,62 @@ function addItem(it, x, y){
 }
 function toggleWall(id){
   const w = WALLS[+id.slice(1)];
+  if(state.plan&&w[4]==='n'){
+    mutate(()=>{state.plan.walls.splice(+id.slice(1),1);state.demolished=[];recomputePlanRooms()});
+    toast(tr('已删除手绘墙','Hand-drawn wall deleted'));return;
+  }
   if (w[4]==='b') return toast(tr('承重墙（黑色）不可拆除', 'Load-bearing walls (black) cannot be removed'));
   if (w[4]==='e') return toast(tr('外墙属于建筑外围护结构，不建议拆除', 'Exterior walls are part of the building envelope and should not be removed'));
   const on = state.demolished.includes(id);
   mutate(() => state.demolished = on ? state.demolished.filter(x => x!==id) : [...state.demolished, id]);
   toast(on ? tr('已恢复墙体', 'Wall restored') : tr(`已标记拆除 ${Math.max(w[2]-w[0], w[3]-w[1])} mm 墙体`, `Marked ${Math.max(w[2]-w[0], w[3]-w[1])} mm of wall for removal`));
 }
+function placeOpening(kind,index,p){
+  if(!state.plan)return;
+  const wall=WALLS[index],h=wall[2]-wall[0]>=wall[3]-wall[1],size=state.plan.openingSizes?.[kind]||{door:900,window:1200,slide:1800}[kind];
+  const lo=h?wall[0]:wall[1],hi=h?wall[2]:wall[3];
+  if(hi-lo<size+200)return toast(tr(`这段墙太短，需要至少 ${size+200} mm`,`This wall must be at least ${size+200} mm long`));
+  const mid=Math.max(lo+size/2+100,Math.min(hi-size/2-100,Math.round((h?p.x:p.y)/100)*100));
+  const a=Math.round(mid-size/2),b=a+size,rect=h?[a,wall[1],b,wall[3]]:[wall[0],a,wall[2],b];
+  const left=h?[wall[0],wall[1],a,wall[3],wall[4]]:[wall[0],wall[1],wall[2],a,wall[4]];
+  const right=h?[b,wall[1],wall[2],wall[3],wall[4]]:[wall[0],b,wall[2],wall[3],wall[4]];
+  mutate(()=>{
+    state.plan.walls.splice(index,1,left,right);state.demolished=[];
+    if(kind==='door')state.plan.doors.push({name:'手绘门',rect,h:h?[a,(wall[1]+wall[3])/2]:[(wall[0]+wall[2])/2,a],c:h?[1,0]:[0,1],o:h?[0,1]:[1,0],len:size});
+    else if(kind==='window')state.plan.wins.push(rect);
+    else state.plan.slides.push({rect,v:!h});
+    recomputePlanRooms();
+  });
+  toast(tr(`已添加${{door:'平开门',window:'窗',slide:'玻璃移门'}[kind]} ${size} mm`,`Added ${kind} ${size} mm`));
+}
+function removeOpening(kind,index){
+  if(!state.plan)return;
+  mutate(()=>{
+    const list=kind==='door'?state.plan.doors:kind==='window'?state.plan.wins:state.plan.slides;
+    const item=list.splice(index,1)[0],r=kind==='window'?item:item.rect;
+    state.plan.walls.push([...r,'n']);state.demolished=[];recomputePlanRooms();
+  });
+  toast(tr('已删除开口并恢复墙体','Opening removed and wall restored'));
+}
 
 function setTool(t){
-  ui.tool = t; ui.mA = null; ui.mCur = null;
+  if(['draw','door','window','slide'].includes(t)&&!state.plan){if(t==='draw')newManual();else toast(tr('请先新建手绘户型','Start a hand-drawn plan first'));return}
+  ui.tool = t; ui.mA = null; ui.mCur = null; ui.drawA = ui.drawCur = null;
+  if(['draw','door','window','slide'].includes(t)){ui.sel=null;renderPanel()}
   svg.setAttribute('class', 'tool-' + t);
   document.querySelectorAll('#tools .btn').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   syncModeHint();
-  renderMeasure();
+  renderMeasure(); renderDraw();
 }
 function syncModeHint(){
   const hints = {select:'',
     measure:COARSE ? tr('按住拖出测量线，或依次点两点 · 靠近墙面自动吸附 · 点「选择」退出', 'Hold and drag a line, or tap two points · snaps to walls · tap "Select" to exit')
       : tr('点击两点（或按住拖动）测量距离 · 靠近墙面自动吸附 · Shift 锁定水平/垂直 · Esc 取消', 'Click two points (or drag) to measure · snaps to walls · Shift locks horizontal/vertical · Esc cancels'),
-    demolish:tr('点击灰色非承重墙标记拆除，再次点击恢复 · 黑色承重墙不可拆', 'Click a grey non-bearing wall to remove it, click again to restore · black bearing walls cannot be removed')};
+    demolish:tr('点击灰色墙体拆除；手绘墙可直接删除 · 黑色承重墙不可拆', 'Click a grey wall to remove it; hand-drawn walls can be deleted · load-bearing walls cannot'),
+    door:tr('点击墙体放置平开门 · 右侧可修改宽度 · 点“拆改墙体”可删除', 'Click a wall to place a hinged door · set width on the right · use Demolish to remove it'),
+    window:tr('点击墙体放置窗户 · 右侧可修改宽度 · 点“拆改墙体”可删除', 'Click a wall to place a window · set width on the right · use Demolish to remove it'),
+    slide:tr('点击墙体放置玻璃移门 · 可在右侧修改开口宽度', 'Click a wall to place a glass sliding door · set its opening width on the right'),
+    draw:tr('点击两点或按住拖动来画墙 · 自动吸附端点和水平/垂直方向 · Esc 结束', 'Click two points or drag to draw a wall · snaps to endpoints and horizontal/vertical · Esc to finish')};
   const h = $('#modehint'); h.textContent = hints[ui.tool]; h.classList.toggle('show', !!hints[ui.tool]);
 }
 
@@ -1187,7 +1261,7 @@ function applyView(){
   const nice = [100,200,500,1000,2000,5000].find(v => v*view.s >= 60) || 5000;
   $('#sbBar').style.width = nice*view.s + 'px';
   $('#sbText').textContent = nice >= 1000 ? `${nice/1000} m` : `${nice} mm`;
-  renderSel(); renderMeasure();
+  renderSel(); renderMeasure(); renderDraw();
 }
 function fitView(){
   const W = svg.clientWidth, H = svg.clientHeight;
@@ -1231,6 +1305,32 @@ function snapPoint(p, shift){
   if (shift && ui.mA){ if (Math.abs(x-ui.mA.x) > Math.abs(y-ui.mA.y)) y = ui.mA.y; else x = ui.mA.x; }
   return {x, y};
 }
+function snapDrawPoint(p,start=null){
+  let x=Math.round(p.x/100)*100,y=Math.round(p.y/100)*100;
+  const tol=Math.min(300,10/view.s);let best=tol;
+  for(const r of WALLS){
+    const h=r[2]-r[0]>=r[3]-r[1],pts=h?[[r[0],(r[1]+r[3])/2],[r[2],(r[1]+r[3])/2]]:[[(r[0]+r[2])/2,r[1]],[(r[0]+r[2])/2,r[3]]];
+    for(const [px,py] of pts){const d=Math.hypot(px-p.x,py-p.y);if(d<best){best=d;x=px;y=py}}
+  }
+  if(start){if(Math.abs(x-start.x)>=Math.abs(y-start.y))y=start.y;else x=start.x}
+  return {x:Math.round(x),y:Math.round(y)};
+}
+function addHandWall(a,b){
+  const len=Math.hypot(b.x-a.x,b.y-a.y);
+  if(len<300)return toast(tr('墙体长度至少 300 mm','Wall must be at least 300 mm long'));
+  if(!window.AutoFloorRooms)return toast(tr('绘图组件仍在加载','Drawing tools are still loading'));
+  const t=state.plan.wallThickness||180,h=a.y===b.y;
+  const wall=h?[Math.min(a.x,b.x),a.y-t/2,Math.max(a.x,b.x),a.y+t/2,'n']:[a.x-t/2,Math.min(a.y,b.y),a.x+t/2,Math.max(a.y,b.y),'n'];
+  mutate(()=>{
+    state.plan.walls.push(wall);
+    if(state.plan.source==='manual'){
+      const xs=state.plan.walls.flatMap(r=>[r[0],r[2]]),ys=state.plan.walls.flatMap(r=>[r[1],r[3]]);
+      const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+      state.plan.bounds={x:x0-2000,y:y0-2000,w:Math.max(8000,x1-x0+4000),h:Math.max(7000,y1-y0+4000)};
+    }
+    recomputePlanRooms();
+  });
+}
 
 /* ======================= 指针交互 ======================= */
 let drag = null, pinch = null;
@@ -1244,6 +1344,15 @@ function pinchInfo(){
 function endDrag(cancel){
   const d = drag; drag = null; svg.classList.remove('panning');
   if (!d) return;
+  if(d.kind==='draw'){
+    if(cancel){ui.drawA=ui.drawCur=null;renderDraw();return}
+    const end=d.current||d.start;
+    if(d.moved||d.fromPending){
+      if(Math.hypot(end.x-d.start.x,end.y-d.start.y)>=300){addHandWall(d.start,end);ui.drawA=end}
+      else ui.drawA=d.start;
+    }else ui.drawA=d.start;
+    ui.drawCur=ui.drawA;renderDraw();return;
+  }
   if (d.kind === 'measure'){
     if (cancel){ ui.mA = ui.mCur = null; renderMeasure(); return; }
     if (d.moved && ui.mA && ui.mCur && Math.hypot(ui.mCur.x-ui.mA.x, ui.mCur.y-ui.mA.y) > 20){
@@ -1265,7 +1374,7 @@ svg.addEventListener('pointerdown', e => {
     touches.set(e.pointerId, {x:e.clientX, y:e.clientY});
     svg.setPointerCapture(e.pointerId);
     if (touches.size >= 2){                    // 第二根手指落下：取消单指操作，进入双指缩放 / 平移
-      endDrag(drag?.kind === 'measure' || drag?.kind === 'pan');
+      endDrag(['measure','pan','draw'].includes(drag?.kind));
       const {d, c} = pinchInfo();
       pinch = {d, c, s:view.s, px:view.x0 + c[0]/view.s, py:view.y0 + c[1]/view.s};
       return;
@@ -1273,6 +1382,23 @@ svg.addEventListener('pointerdown', e => {
   }
   if (pinch) return;
   const p = toMM(e), t = e.target;
+  if(['door','window','slide'].includes(ui.tool)){
+    const wall=t.closest('[data-wall]');
+    if(wall)placeOpening(ui.tool,+wall.dataset.wall.slice(1),p);
+    else toast(tr('请点击一段足够长的墙体','Click a long enough wall'));
+    return;
+  }
+  if(ui.tool==='demolish'){
+    for(const [key,kind] of [['door','door'],['win','window'],['slide','slide']]){
+      const hit=t.closest(`[data-${key}]`);if(hit&&state.plan){removeOpening(kind,+hit.dataset[key]);return}
+    }
+  }
+  if(ui.tool==='draw'){
+    const start=ui.drawA||snapDrawPoint(p),fromPending=!!ui.drawA;
+    ui.drawA=null;
+    drag={kind:'draw',start,current:snapDrawPoint(p,start),fromPending,sx:e.clientX,sy:e.clientY,moved:false};
+    svg.setPointerCapture(e.pointerId);renderDraw();return;
+  }
   if (ui.tool === 'measure'){
     const q = snapPoint(p, e.shiftKey);
     if (!ui.mA){ ui.mA = q; ui.mCur = q; drag = {kind:'measure', sx:e.clientX, sy:e.clientY, moved:false}; svg.setPointerCapture(e.pointerId); }
@@ -1309,9 +1435,14 @@ svg.addEventListener('pointermove', e => {
     const room = e.target.closest && e.target.closest('[data-room]');
     $('#hover').innerHTML = room ? `<b>${esc(state.rooms[room.dataset.room].name)}</b> ${fmt(area(ROOMS.find(r=>r.id===room.dataset.room).poly))} m²` : '';
     if (ui.tool === 'measure' && ui.mA){ ui.mCur = snapPoint(p, e.shiftKey); renderMeasure(); }
+    if (ui.tool === 'draw' && ui.drawA){ui.drawCur=snapDrawPoint(p,ui.drawA);renderDraw()}
     return;
   }
   const far = Math.hypot(e.clientX-drag.sx, e.clientY-drag.sy) >= TAP;
+  if(drag.kind==='draw'){
+    if(far)drag.moved=true;
+    drag.current=snapDrawPoint(p,drag.start);renderDraw();return;
+  }
   if (drag.kind === 'measure'){
     if (far) drag.moved = true;
     ui.mCur = snapPoint(p, e.shiftKey); renderMeasure(); return;
@@ -1373,12 +1504,13 @@ document.addEventListener('keydown', e => {
   if (k === 't') setView(is3D() ? '2d' : '3d');
   else if (is3D() && ['v','m','x','f','+','=','-'].includes(k)) return;
   else if (k === 'v') setTool('select');
+  else if (k === 'w') setTool('draw');
   else if (k === 'm') setTool('measure');
   else if (k === 'x') setTool('demolish');
   else if (k === 'f') fitView();
   else if (k === 'r') rotateSel(e.shiftKey ? -90 : 90);
   else if (k === 'delete' || k === 'backspace'){ e.preventDefault(); deleteSel(); }
-  else if (k === 'escape'){ if (ui.mA){ ui.mA = null; renderMeasure(); } else { if (ui.tool !== 'select') setTool('select'); select(null); } }
+  else if (k === 'escape'){ if (ui.mA){ ui.mA = null; renderMeasure(); } else if(ui.drawA){ui.drawA=ui.drawCur=null;renderDraw()} else { if (ui.tool !== 'select') setTool('select'); select(null); } }
   else if (k.startsWith('arrow') && ui.sel?.kind === 'furn'){
     e.preventDefault(); const st = e.shiftKey ? 100 : 10;
     mutate(() => { const f = getF(ui.sel.id); if (k==='arrowleft') f.cx -= st; if (k==='arrowright') f.cx += st; if (k==='arrowup') f.cy -= st; if (k==='arrowdown') f.cy += st; });
@@ -1568,6 +1700,40 @@ $('#fileIn').onchange = e => {
   });
   e.target.value = '';
 };
+function recomputePlanRooms(regions){
+  if(!state.plan)return;
+  const walls=state.plan.walls;
+  if(walls.length<3){state.plan.rooms=[];state.rooms={};return}
+  const footprint=window.AutoFloorFootprint?.(walls)||[];
+  const filled=regions??window.AutoFloorRooms?.(walls)??[];
+  const old=(state.plan.rooms||[]).filter(r=>r.counted!==false),used=new Set(),matchedRooms=new Set(),inside=(p,poly)=>{
+    if(!p||!poly)return false;
+    let hit=false;
+    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+      const a=poly[i],b=poly[j];
+      if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])hit=!hit;
+    }
+    return hit;
+  };
+  let next=1;
+  for(const room of filled){
+    const prior=old.find(r=>!used.has(r.id)&&(inside(room.at,r.poly)||inside(r.at,room.poly)));
+    if(prior){used.add(prior.id);matchedRooms.add(room);room.id=prior.id;room.name=state.rooms[prior.id]?.name||prior.name;room.mat=state.rooms[prior.id]?.mat||prior.mat}
+  }
+  const ids=new Set([...matchedRooms].map(r=>r.id));
+  for(const room of filled)if(!matchedRooms.has(room)){while(ids.has(`auto-${next}`))next++;room.id=`auto-${next++}`;ids.add(room.id)}
+  state.plan.rooms=footprint.length?[{id:'auto-base',name:'基础地面',poly:footprint,mat:'tile800',counted:false},...filled]:filled;
+  state.rooms=Object.fromEntries(state.plan.rooms.map(r=>[r.id,{name:r.name,mat:r.mat}]));
+  ui.sel=null;
+}
+function newManual(){
+  if(!confirm(tr('新建空白手绘户型？当前方案会被替换，可用“撤销”恢复。','Start a blank hand-drawn plan? The current plan will be replaced; Undo can restore it.')))return;
+  const b=snap(),plan={source:'manual',name:'我的手绘户型',walls:[],wins:[],doors:[],slides:[],rooms:[],wallThickness:180,bounds:{x:-1000,y:-1000,w:10000,h:8000}};
+  state={furniture:[],rooms:{},demolished:[],measures:[],plan};ui.sel=null;
+  commit(b);renderAll();fitView();setTool('draw');
+  if(is3D())setView('2d');
+}
+$('#newManual').onclick=newManual;
 $('#reset').onclick = () => { if (confirm(tr('恢复为默认设计方案？（可撤销）', 'Reset to the default design? (undoable)'))){ const b = snap(); state = defaultState(); ui.sel = null; commit(b); renderAll(); } };
 window.FloorPlanBridge = {
   apply(plan){
@@ -1575,6 +1741,12 @@ window.FloorPlanBridge = {
     state = {furniture:[], rooms:Object.fromEntries(plan.rooms.map(r=>[r.id,{name:r.name,mat:r.mat}])),demolished:[],measures:[],plan};
     ui.sel = null; commit(b); renderAll(); fitView();
     if (document.body.classList.contains('m3d')) window.View3D?.fitWhole();
+  },
+  currentPlan(){ return state.plan; },
+  fillFloors(regions, silent=false){
+    if(!state.plan)return;
+    if(state.plan.walls.length<3)return toast(tr('请先画至少三段墙体','Draw at least three walls first'));
+    if(silent){recomputePlanRooms(regions);save();renderAll()}else mutate(()=>recomputePlanRooms(regions));
   }
 };
 // 横竖屏切换、表头换行等都会改变画布尺寸；尺寸从 0 恢复（如首次布局）时重新适应窗口
@@ -2516,11 +2688,14 @@ function buildArch(){
   const top = opt.cut;
   ROOMS.forEach(r => {
     const m = floorMat(state.rooms[r.id].mat), bay = r.counted === false;
-    const geo = bay ? new THREE.ExtrudeGeometry(shapeOf(r.poly), {depth:.45, bevelEnabled:false}) : new THREE.ShapeGeometry(shapeOf(r.poly));
+    const base = r.id === 'auto-base';
+    const geo = bay && !base ? new THREE.ExtrudeGeometry(shapeOf(r.poly), {depth:.45, bevelEnabled:false}) : new THREE.ShapeGeometry(shapeOf(r.poly));
     geo.rotateX(-Math.PI/2);
-    const fl = new THREE.Mesh(geo, bay ? [m, mat('#e9e4da')] : m);
-    fl.receiveShadow = true; fl.userData.room = r.id;
-    if (bay){ fl.castShadow = true; archUp.add(fl); } else archFloor.add(fl);
+    const fl = new THREE.Mesh(geo, bay && !base ? [m, mat('#e9e4da')] : m);
+    fl.receiveShadow = true; if(!base)fl.userData.room = r.id;
+    if (base)fl.position.y=-.012;
+    if (bay && !base){ fl.castShadow = true; archUp.add(fl); } else archFloor.add(fl);
+    if (base) return;
     // 天花：法线朝下，只在室内仰视时可见
     const cg = new THREE.ShapeGeometry(shapeOf(r.poly, true)); cg.rotateX(Math.PI/2);
     const ceil = new THREE.Mesh(cg, mat('#fbfaf7', {roughness:1})); ceil.position.y = H; ceil.visible = top >= H; archUp.add(ceil);
@@ -2540,7 +2715,7 @@ function buildArch(){
   [...DOORS.map(d => [d.rect, 2.1]), ...SLIDES.map(s => [s.rect, s.v ? 2.4 : 2.1]), ...(!state.plan ? [[[10270,800,10510,2600], 2.4], [[10270,4260,10510,5740], 2.4]] : [])]
     .forEach(([r, h]) => { if (top > h) wallBox(r, h, top); });
   WINS.forEach((r, i) => {
-    const sill = i === 0 ? 1.4 : i >= 6 ? .45 : .9, head = 2.4;
+    const sill = state.plan ? .9 : i === 0 ? 1.4 : i >= 6 ? .45 : .9, head = 2.4;
     wallBox(r, 0, Math.min(sill, top)); if (top > head) wallBox(r, head, top);
     colliders.push([wx(r[0]), wz(r[1]), wx(r[2]), wz(r[3])]);
     const gTop = Math.min(head, top); if (gTop <= sill) return;

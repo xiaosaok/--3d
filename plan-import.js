@@ -84,6 +84,106 @@ function lineRects(entities,thickness){
 function unitFactor(header){
   return {1:25.4,2:304.8,4:1,5:10,6:1000,7:1000000,14:100,15:10000}[Number(header?.INSUNITS??header?.$INSUNITS)] || 1;
 }
+// Fill the imported plan from wall geometry. Short collinear gaps are bridged for doors
+// and windows; only enclosed free-space components become editable floor regions.
+export function autoFloorRooms(walls){
+  const rects=walls.map(r=>r.slice(0,4)).filter(r=>r.length===4&&r.every(finite)&&r[2]>r[0]&&r[3]>r[1]);
+  if(!rects.length)return [];
+  const [x0,y0,x1,y1]=union(rects),step=Math.max(60,Math.min(110,Math.ceil(Math.max(x1-x0,y1-y0)/170/10)*10));
+  const ox=x0-step*4,oy=y0-step*4,w=Math.ceil((x1-x0)/step)+8,h=Math.ceil((y1-y0)/step)+8;
+  if(w*h>100000)return [];
+  const blocked=new Uint8Array(w*h),mark=(r,pad=0)=>{
+    const xa=Math.max(0,Math.floor((r[0]-pad-ox)/step)),xb=Math.min(w-1,Math.floor((r[2]+pad-ox)/step));
+    const ya=Math.max(0,Math.floor((r[1]-pad-oy)/step)),yb=Math.min(h-1,Math.floor((r[3]+pad-oy)/step));
+    for(let y=ya;y<=yb;y++)for(let x=xa;x<=xb;x++)blocked[y*w+x]=1;
+  };
+  rects.forEach(r=>mark(r,step*.18));
+  for(const horizontal of [true,false]){
+    const lines=rects.filter(r=>horizontal?r[2]-r[0]>=(r[3]-r[1])*1.6:r[3]-r[1]>=(r[2]-r[0])*1.6)
+      .map(r=>({axis:horizontal?(r[1]+r[3])/2:(r[0]+r[2])/2,start:horizontal?r[0]:r[1],end:horizontal?r[2]:r[3]}))
+      .sort((a,b)=>a.axis-b.axis);
+    const groups=[];
+    for(const line of lines){const group=groups.find(g=>Math.abs(g.axis-line.axis)<180);if(group){group.lines.push(line);group.axis=(group.axis*(group.lines.length-1)+line.axis)/group.lines.length}else groups.push({axis:line.axis,lines:[line]})}
+    for(const group of groups){
+      const spans=group.lines.sort((a,b)=>a.start-b.start);let end=spans[0]?.end;
+      for(let i=1;i<spans.length;i++){
+        const line=spans[i],gap=line.start-end;
+        if(gap>0&&gap<=2300){
+          const a=group.axis-step*.55,b=group.axis+step*.55;
+          mark(horizontal?[end,a,line.start,b]:[a,end,b,line.start]);
+        }
+        end=Math.max(end,line.end);
+      }
+    }
+  }
+  const seen=new Uint8Array(w*h),components=[];
+  for(let root=0;root<w*h;root++){
+    if(blocked[root]||seen[root])continue;
+    const cells=[],queue=[root];seen[root]=1;let edge=false,sx=0,sy=0;
+    for(let at=0;at<queue.length;at++){
+      const id=queue[at],x=id%w,y=Math.floor(id/w);cells.push(id);sx+=x;sy+=y;
+      if(x===0||y===0||x===w-1||y===h-1)edge=true;
+      for(const n of [x? id-1:-1,x<w-1?id+1:-1,y?id-w:-1,y<h-1?id+w:-1])if(n>=0&&!blocked[n]&&!seen[n]){seen[n]=1;queue.push(n)}
+    }
+    if(!edge&&cells.length*step*step>=1.2e6)components.push({cells,cx:sx/cells.length,cy:sy/cells.length});
+  }
+  components.sort((a,b)=>b.cells.length-a.cells.length);
+  const rooms=[];
+  for(const [i,comp] of components.slice(0,32).entries()){
+    const member=new Uint8Array(w*h);comp.cells.forEach(id=>member[id]=1);
+    const edges=new Map(),add=(a,b)=>{let row=edges.get(a);if(!row){row=[];edges.set(a,row)}row.push(b)};
+    for(const id of comp.cells){
+      const x=id%w,y=Math.floor(id/w),p=(a,b)=>b*(w+1)+a;
+      if(y===0||!member[id-w])add(p(x,y),p(x+1,y));
+      if(x===w-1||!member[id+1])add(p(x+1,y),p(x+1,y+1));
+      if(y===h-1||!member[id+w])add(p(x+1,y+1),p(x,y+1));
+      if(x===0||!member[id-1])add(p(x,y+1),p(x,y));
+    }
+    const loops=[];
+    for(const [start,targets] of edges)while(targets.length){
+      const loop=[start];let cur=targets.pop(),guard=0;
+      while(cur!==start&&guard++<w*h*4){loop.push(cur);const next=edges.get(cur);if(!next?.length)break;cur=next.pop()}
+      if(cur===start&&loop.length>=4)loops.push(loop);
+    }
+    if(!loops.length)continue;
+    const polygon=loop=>loop.map(k=>[k%(w+1),Math.floor(k/(w+1))]);
+    const signed=p=>p.reduce((v,a,j)=>{const b=p[(j+1)%p.length];return v+a[0]*b[1]-b[0]*a[1]},0);
+    let poly=polygon(loops.sort((a,b)=>Math.abs(signed(polygon(b)))-Math.abs(signed(polygon(a))))[0]);
+    poly=poly.filter((p,j)=>{const a=poly[(j+poly.length-1)%poly.length],b=poly[(j+1)%poly.length];return (p[0]-a[0])*(b[1]-p[1])!==(p[1]-a[1])*(b[0]-p[0])});
+    if(poly.length<4)continue;
+    let center=comp.cells[0],best=Infinity;
+    for(const id of comp.cells){const x=id%w,y=Math.floor(id/w),d=(x-comp.cx)**2+(y-comp.cy)**2;if(d<best){best=d;center=id}}
+    const mat=['wood','walnut','tile600','antislip','terrazzo','marble','carpet','tile800'][i%8];
+    rooms.push({id:`auto-${i+1}`,name:`区域 ${i+1}`,poly:poly.map(([x,y])=>[Math.round(ox+x*step),Math.round(oy+y*step)]),mat,
+      at:[Math.round(ox+((center%w)+.5)*step),Math.round(oy+(Math.floor(center/w)+.5)*step)]});
+  }
+  return rooms;
+}
+export function floorFootprint(walls){
+  const rects=walls.map(r=>r.slice(0,4)).filter(r=>r.length===4&&r.every(finite)&&r[2]>r[0]&&r[3]>r[1]);
+  if(!rects.length)return [];
+  const [x0,y0,x1,y1]=union(rects),step=Math.max(80,Math.ceil((y1-y0)/110/10)*10),rows=Math.max(1,Math.ceil((y1-y0)/step));
+  const left=[],right=[];
+  for(let j=0;j<rows;j++){
+    const y=Math.min(y1,y0+(j+.5)*step);
+    const dist=r=>Math.max(r[1]-y,y-r[3],0);
+    const reach=700+Math.min(1500,Math.max(0,y-y0)*1.2);
+    let near=rects.filter(r=>dist(r)<=reach&&r[1]<=y+250);
+    if(!near.length)near=rects;
+    left.push(Math.min(...near.map(r=>r[0]))+80);
+    right.push(Math.max(...near.map(r=>r[2]))-80);
+  }
+  const path=[],push=(x,y)=>{const p=path.at(-1);if(!p||p[0]!==x||p[1]!==y)path.push([x,y])};
+  push(left[0],y0);push(right[0],y0);
+  for(let j=0;j<rows;j++){
+    const y=Math.min(y1,y0+(j+1)*step);push(right[j],y);
+    if(j+1<rows)push(right[j+1],y);
+  }
+  push(left.at(-1),y1);
+  for(let j=rows-1;j>=0;j--){const y=Math.max(y0,y0+j*step);push(left[j],y);if(j>0)push(left[j-1],y)}
+  if(path.at(-1)[0]===path[0][0]&&path.at(-1)[1]===path[0][1])path.pop();
+  return path.filter((p,j)=>{const a=path[(j+path.length-1)%path.length],b=path[(j+1)%path.length];return (p[0]-a[0])*(b[1]-p[1])!==(p[1]-a[1])*(b[0]-p[0])});
+}
 function makePlan(rects,name,source,scale=1,invertY=true){
   rects=rects.filter(r=>r.every(finite)&&r[2]>r[0]&&r[3]>r[1]);
   if(!rects.length)throw Error('没有识别到墙体，请检查图纸或更换文件');
@@ -93,8 +193,8 @@ function makePlan(rects,name,source,scale=1,invertY=true){
     .filter(r=>r[2]-r[0]>=20&&r[3]-r[1]>=20);
   if(walls.length>2000)throw Error('检测到的墙线过多，请先裁剪图纸到单套户型');
   const [x0,y0,x1,y1]=union(walls.map(r=>r.slice(0,4)));
-  const inset=Math.min(100,(x1-x0)/20,(y1-y0)/20);
-  const rooms=[{id:'imported',name:'导入户型',poly:[[x0+inset,y0+inset],[x1-inset,y0+inset],[x1-inset,y1-inset],[x0+inset,y1-inset]],mat:'tile800',at:[6000,5300]}];
+  const base={id:'auto-base',name:'基础地面',poly:floorFootprint(walls),mat:'tile800',counted:false};
+  const rooms=[base,...autoFloorRooms(walls)];
   return {source,name,walls,wins:[],doors:[],slides:[],rooms,bounds:{x:x0-1200,y:y0-1200,w:x1-x0+2400,h:y1-y0+2400},widthMm:x1-x0,heightMm:y1-y0};
 }
 export function extractCadPlan(db,name='CAD 户型'){
@@ -170,7 +270,8 @@ function drawPreview(plan){
   const c=canvas.getContext('2d'),p=plan.bounds,s=Math.min(canvas.width/p.w,canvas.height/p.h)*.94;
   c.fillStyle='#f8f6f0';c.fillRect(0,0,canvas.width,canvas.height);
   c.save();c.translate((canvas.width-p.w*s)/2-p.x*s,(canvas.height-p.h*s)/2-p.y*s);c.scale(s,s);
-  c.fillStyle='#e9e3d7';const poly=plan.rooms[0].poly;c.beginPath();poly.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();
+  const colors={wood:'#dcc09a',walnut:'#a57c56',tile800:'#ebe6dd',tile600:'#dfe3e0',antislip:'#d3d8d4',marble:'#f2efe9',terrazzo:'#e6dfd3',carpet:'#c6bfd2'};
+  for(const room of plan.rooms){c.fillStyle=colors[room.mat]||'#e9e3d7';c.beginPath();room.poly.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill()}
   c.fillStyle='#34312d';for(const r of plan.walls)c.fillRect(r[0],r[1],r[2]-r[0],r[3]-r[1]);c.restore();
 }
 let chosenFile=null, pending=null, runId=0;
@@ -181,11 +282,15 @@ async function processFile(){
     const plan=await readDrawing(file,Number($('#imageWidth').value)||10);
     if(id!==runId)return;
     pending=plan;drawPreview(plan);
-    $('#importStatus').textContent=`已识别 ${plan.walls.length} 段墙体 · 约 ${(plan.widthMm/1000).toFixed(1)} × ${(plan.heightMm/1000).toFixed(1)} 米。请核对墙线后生成。`;
+    $('#importStatus').textContent=`已识别 ${plan.walls.length} 段墙体、${plan.rooms.length-1} 个可填充区域 · 约 ${(plan.widthMm/1000).toFixed(1)} × ${(plan.heightMm/1000).toFixed(1)} 米。请核对墙线后生成。`;
     $('#applyImport').disabled=false;
   }catch(e){if(id===runId)$('#importStatus').textContent=e.message||'识别失败，请换一张清晰图纸';console.error(e)}
 }
 if(typeof document!=='undefined'){
+  window.AutoFloorRooms=autoFloorRooms;
+  window.AutoFloorFootprint=floorFootprint;
+  const saved=window.FloorPlanBridge?.currentPlan();
+  if(saved?.rooms?.length===1&&saved.rooms[0].id==='imported')window.FloorPlanBridge.fillFloors(autoFloorRooms(saved.walls),true);
   const dialog=$('#importDialog');
   $('#importDrawing').onclick=()=>$('#drawingIn').click();
   $('#drawingIn').onchange=e=>{
