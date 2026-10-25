@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>木作封面工坊 | 彭杰</title>
+<style>
+:root{--red:#ff2442;--ink:#242126;--muted:#77717a;--line:#eee8ec;--bg:#f6f4f6}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:18px clamp(16px,3vw,36px);background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:5}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:18px}.logo{background:var(--red);color:#fff;border-radius:12px;width:38px;height:38px;display:grid;place-items:center;font-size:21px}.brand small{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-top:2px}
+header .status{font-size:12px;color:#6f6870;background:#f8f5f7;padding:8px 11px;border-radius:99px}
+.app{max-width:1500px;margin:auto;padding:20px;display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:20px;align-items:start}
+.panel,.previewPanel{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 6px 24px #35233308;overflow:hidden}
+.panel{padding:18px}.sectionTitle{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px;font-size:15px;font-weight:850}.sectionTitle span{font-size:11px;color:var(--muted);font-weight:600}
+.group{margin-bottom:17px}.group label,.fieldLabel{display:block;font-size:12px;font-weight:800;margin-bottom:7px;color:#4c454d}
+input[type=text],input[type=number],select,textarea{width:100%;min-width:0;border:1px solid #e6dfe5;background:#fff;border-radius:10px;padding:10px 11px;font:inherit;font-size:13px;outline:none;color:var(--ink)}
+input:focus,select:focus,textarea:focus{border-color:#ff8294;box-shadow:0 0 0 3px #ff24420d}
+input[type=file]{width:100%;font-size:12px;border:1px dashed #e6dfe5;border-radius:10px;padding:12px;background:#fff}
+input[type=color]{width:38px;height:34px;border:0;padding:0;background:none;cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--red)}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:800;transition:.15s}
+button:active{transform:scale(.98)}.primary{background:var(--red);color:#fff}.primary:hover{background:#e61e3a}.secondary{background:#fff0f2;color:#d91f3a}.soft{background:#f5f2f5;color:#514951}.dark{background:#27232a;color:#fff}.buttonRow{display:flex;gap:8px}.buttonRow>*{flex:1}
+.presetGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.preset{border:1px solid var(--line);border-radius:12px;padding:10px;text-align:left;background:#fff;min-width:0}.preset.active{border:2px solid var(--red);padding:9px;background:#fff8f9}.swatches{display:flex;gap:4px;margin-bottom:7px}.swatches i{width:17px;height:17px;border-radius:6px;display:block;border:1px solid #0000000a}.preset strong{display:block;font-size:12px;line-height:1.4}.preset small{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.colorField{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:10px;padding:5px 8px}.colorField span{font-size:11px;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:17px 0}.help{font-size:11px;line-height:1.6;color:var(--muted)}.checkline{display:flex;align-items:center;gap:8px;font-size:12px;margin:8px 0}.checkline input{accent-color:var(--red)}
+.previewPanel{padding:18px;min-width:0}.previewHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.previewHead h2{margin:0;font-size:16px}.previewHead p{margin:4px 0 0;font-size:11px;color:var(--muted)}
+.previewLayout{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;align-items:start}.stage{min-width:0;background:#f1edf0;border-radius:15px;padding:16px;display:flex;justify-content:center;align-items:flex-start;min-height:400px}
+.canvasWrap{width:min(100%,450px);position:relative;line-height:0;box-shadow:0 12px 35px #25162120;border-radius:8px;overflow:hidden;touch-action:pan-y}
+canvas{display:block;width:100%;height:auto;aspect-ratio:3/4;touch-action:none}
+.canvasHint{font-size:11px;color:var(--muted);line-height:1.55;margin:10px 0 0}
+.sideTools{min-width:0}.toolCard{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}.toolCard h3{font-size:12px;margin:0 0 10px}.toolCard .group{margin-bottom:12px}.toolCard .group:last-child{margin-bottom:0}
+.dragList{display:grid;gap:6px}.dragItem{display:flex;align-items:center;gap:7px;padding:8px;border-radius:9px;background:#f8f5f7;font-size:11px}.dragItem button{padding:5px 7px;background:#fff}
+.longPreviewStage{max-height:70vh;overflow:auto;background:#f1edf0;border-radius:12px;padding:12px;text-align:center}.longPreviewStage canvas{width:min(100%,360px);height:auto;aspect-ratio:auto;margin:0 auto;box-shadow:0 8px 24px #25162120}.batch{display:grid;gap:8px}.batchItem{display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;gap:9px;padding:8px;border:1px solid var(--line);border-radius:11px}.batchItem img{width:58px;aspect-ratio:3/4;object-fit:cover;border-radius:6px;background:#eee}.batchItem strong{font-size:12px;display:block}.batchItem small{display:block;font-size:10px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}.batchItem button{padding:7px 8px}
+#batchFiles{display:none}.footerNote{text-align:center;color:#8a828b;font-size:10px;padding:0 16px 22px}
+@media(max-width:1000px){.app{grid-template-columns:320px minmax(0,1fr);padding:12px;gap:12px}.previewLayout{grid-template-columns:1fr}.sideTools{display:grid;grid-template-columns:1fr 1fr;gap:8px}.toolCard{margin:0}.stage{padding:10px}.previewPanel{padding:12px}}
+@media(max-width:700px){header{padding:12px 14px}.brand{font-size:15px}.brand small{font-size:10px}.headerStatus{display:none}.app{display:flex;flex-direction:column;padding:10px;width:100%;gap:12px}.previewPanel{order:0;width:100%}.panel{order:1;width:100%;padding:14px}.previewLayout{display:flex;flex-direction:column}.stage{width:100%;min-height:0;padding:10px}.canvasWrap{width:min(100%,430px)}.sideTools{width:100%;display:grid;grid-template-columns:1fr 1fr}.previewHead{align-items:flex-start}.previewHead .buttonRow{max-width:48%}.previewHead .buttonRow button{padding:9px 7px;font-size:11px}.presetGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.footerNote{padding-bottom:14px}}
+@media(max-width:390px){.sideTools{grid-template-columns:1fr}.two{grid-template-columns:1fr 1fr}.brand{font-size:14px}}
+
+button:disabled{opacity:.5;cursor:wait}button:focus-visible{outline:3px solid #ff8294;outline-offset:3px}
+#longPreviewPanel{grid-column:2;margin-top:0!important}.workStatus{padding:10px 14px;background:#fff5ef;color:#754b32;border-radius:10px;font-size:12px;line-height:1.6;margin-bottom:14px}.batchActions{display:flex;gap:3px}.batchActions button{padding:6px} .longPreviewStage:empty{display:none}
+@media(max-width:700px){#longPreviewPanel{order:2}.headerStatus{display:none}}
+</style>
+<style>
+.publishFields label{align-content:start}.publishFields input{height:42px}.batchExport>.buttonRow{flex:0 0 auto}.batchExport>.buttonRow button{white-space:nowrap}.batchExport #longStatus{flex-basis:100%;margin:0}
+.headerMeta{display:grid;gap:6px;text-align:right;font-size:12px;color:#746870}.headerMeta a{color:#c81733;text-decoration:none;font-weight:700}#batchWorkspace{grid-column:1/-1;scroll-margin-top:95px;padding:24px}.batchIntro{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:18px}.batchIntro h2{margin:0 0 8px;font-size:24px}.batchIntro p{margin:0;color:#746870;font-size:13px;line-height:1.7}.batchStats{white-space:nowrap;padding:12px 18px;background:#fff0f2;color:#b61d35;border-radius:12px;font-size:14px;font-weight:700}.batchBar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.batchBar button{font-size:13px}.batchControls{display:grid;grid-template-columns:1fr 1fr;gap:14px}.batchControls .group{margin:0}#batchList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}#batchList .batchItem{display:flex;flex-direction:column;align-items:stretch;padding:14px;gap:10px;min-width:0}#batchList .batchItem img{width:100%;height:240px;aspect-ratio:auto;object-fit:contain;background:#f6f1f3;border-radius:10px}#batchList .batchItem strong{overflow-wrap:anywhere}.batchFields{display:grid;gap:8px}.batchFields label{font-size:11px;color:#75636c;display:grid;gap:4px}.batchFields input,.batchFields select{font-size:13px}.batchActions{justify-content:flex-end}.batchBadge{padding:5px 8px;background:#f5f1f4;color:#62535d;border-radius:6px;font-size:11px}.batchBadge.review{background:#fff1da;color:#865c12}.batchState{background:#f9f6f7;padding:12px;border-radius:10px;font-size:13px;line-height:1.6;min-height:44px}.importArea{margin:14px 0;padding:16px;border:1px solid #eee2e6;border-radius:12px}.importArea textarea{font-size:13px;line-height:1.8}.batchExport{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid #eee2e6}.batchExport button{font-size:14px}.publishFields{display:grid;grid-template-columns:1fr 2fr;gap:16px;padding:16px 0}.publishFields label{font-size:13px;font-weight:700;display:grid;gap:8px}.batchListEmpty{grid-column:1/-1;text-align:center;color:#87717a;padding:45px;border:1px dashed #ddcbd2;border-radius:12px}#longPreviewPanel{grid-column:1/-1}.panel{min-width:0}
+@media(max-width:1000px){#batchList{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){#batchWorkspace{order:2;padding:16px}#longPreviewPanel{order:3}.batchIntro{align-items:flex-start;flex-direction:column;gap:10px}.batchControls,.publishFields{grid-template-columns:1fr}#batchList{grid-template-columns:1fr}.headerMeta{font-size:10px;max-width:48%}.headerMeta span{line-height:1.6}#batchList .batchItem img{height:280px}}
+</style></head>
+<body><script src="browser-vision.js"></script><script>const browserCopyCatalog=[{"id":"wardrobe","name":"衣柜","label":"a bedroom with a large built-in wardrobe closet and a bed","preset":5,"titles":["卧室衣柜设计灵感","衣柜立面这样搭","一面衣柜的设计细节"],"subs":["柜门比例与整体配色，值得参考","把衣柜融入卧室的整体设计","从立面细节寻找木作灵感"]},{"id":"bookcase","name":"书桌书柜","label":"a home office with a writing desk and a computer monitor","preset":9,"titles":["书桌书柜一体设计","书房木作搭配灵感","让书柜融入生活"],"subs":["书桌与书柜的组合，值得参考","展示与收纳的布局灵感","从书房布局寻找设计思路"]},{"id":"sideboard","name":"餐边柜酒柜","label":"a dining room sideboard and coffee bar cabinet with shelves for wine bottles and glasses","preset":7,"titles":["餐边柜设计灵感","餐厅木作这样搭","餐边柜的布局细节"],"subs":["从柜体与餐厅的搭配寻找灵感","展示与收纳，让餐厅更完整","柜门配色与台面布局参考"]},{"id":"tv","name":"电视柜背景墙","label":"a living room television media console cabinet and TV feature wall","preset":3,"titles":["电视柜与背景墙设计","客厅木作搭配灵感","一面电视墙的设计细节"],"subs":["电视墙与柜体的组合参考","客厅立面与整体配色灵感","从布局和比例看客厅木作"]},{"id":"kitchen","name":"橱柜","label":"a kitchen with a cooking stove, range hood and sink","preset":7,"titles":["厨房橱柜设计灵感","厨房柜体这样搭","橱柜布局与配色参考"],"subs":["从柜门与台面的搭配寻找灵感","厨房空间的柜体设计参考","布局与配色，先看整体关系"]},{"id":"tatami","name":"榻榻米","label":"a small room with a raised tatami platform bed and built-in storage","preset":8,"titles":["榻榻米空间设计灵感","小房间木作搭配参考","榻榻米与柜体的组合"],"subs":["从整体布局寻找空间灵感","柜体与休息区的组合参考","小空间也能有完整设计思路"]},{"id":"entry","name":"玄关鞋柜","label":"an entryway hallway shoe storage cabinet and bench","preset":6,"titles":["玄关柜设计灵感","入户空间这样搭","鞋柜与玄关的组合"],"subs":["从入户布局看收纳设计","柜体比例与整体配色参考","进门第一眼的木作搭配"]},{"id":"laundry","name":"阳台洗衣柜","label":"a laundry balcony washing machine with built-in cabinets","preset":1,"titles":["阳台洗衣柜设计参考","阳台柜体搭配灵感","洗衣区这样规划"],"subs":["洗衣区与柜体的组合灵感","从阳台布局寻找实用思路","柜门与台面的整体搭配参考"]},{"id":"display","name":"展示柜","label":"a glass door display cabinet showcasing collectibles and ornaments","preset":4,"titles":["展示柜设计灵感","把收藏融入木作设计","展示与收纳的搭配"],"subs":["从展示格布局寻找设计思路","柜体与陈列的整体搭配","展示区比例与配色参考"]},{"id":"stairs","name":"楼梯下柜","label":"built-in storage cabinets underneath a staircase","preset":10,"titles":["楼梯下柜体设计参考","楼梯空间的木作灵感","顺着楼梯做收纳"],"subs":["从空间形状出发安排柜体","楼梯与柜体的组合参考","不规则空间的设计思路"]},{"id":"other","name":"待确认","label":"an outdoor scene portrait animal landscape or unrelated object rather than interior cabinetry","preset":null,"titles":[],"subs":[]}];</script>
+<header>
+  <div class="brand"><div class="logo">木</div><div>木作封面工坊<small>木作设计 · 智能图文工作台</small></div></div>
+  <div class="headerMeta"><a href="#batchWorkspace">进入批量工作台 →</a><span>作者：彭杰 · 联系微信：305519722</span></div>
+</header>
+<main class="app">
+<section class="panel">
+  <div class="workStatus" id="workStatus" role="status" aria-live="polite">准备就绪 · 设置自动保存在此浏览器</div><h2 class="sectionTitle">封面内容 <span>01 / CONTENT</span></h2>
+  <div class="group"><label for="upload">上传实拍图（支持 JPG / PNG / WEBP）</label><input id="upload" type="file" accept="image/*"></div>
+  <div class="group"><label>选择爆款模板</label><div id="presetGrid" class="presetGrid"></div></div>
+  <div class="group"><label for="tagText">顶部贴纸文案</label><input id="tagText" type="text" value="入住1年0翻车！"></div>
+  <div class="group"><label for="mainTitle">主标题（支持自动换行）</label><textarea id="mainTitle" rows="2">微水泥+悬浮木作</textarea></div>
+  <div class="group">
+    <label for="subTitle">胶囊副标题</label>
+    <textarea id="subTitle" rows="2">离地15cm · 3000K洗墙灯带✨</textarea>
+    <div class="buttonRow" style="margin-top:7px">
+      <button class="soft" id="randomSub">🎲 随机换一句</button>
+      <button class="secondary" id="randomSubBatch">✨ 随机生成5条</button>
+    </div>
+    <div id="randomSubResults" class="help" style="display:none;margin-top:8px"></div>
+  </div>
+  <div class="group"><label for="bottomTag">底部高亮提醒</label><textarea id="bottomTag" rows="2">⚠️ 评论区扣【111】领施工图纸</textarea></div>
+  <div class="buttonRow"><button class="secondary" id="resetText">恢复模板文案</button><button class="soft" id="clearImage">移除底图</button></div>
+  <hr>
+  <h2 class="sectionTitle">文字样式 <span>02 / STYLE</span></h2>
+  <div class="group"><label for="activeLayer">正在编辑的文字层</label><select id="activeLayer"><option value="tag">顶部贴纸</option><option value="main">主标题</option><option value="sub">副标题</option><option value="bottom">底部提醒</option></select></div>
+  <div class="two">
+    <div class="group"><label for="fontSize">字号 <b id="fontSizeVal">78</b> px</label><input id="fontSize" type="range" min="20" max="110" value="78"></div>
+    <div class="group"><label for="strokeWidth">描边 <b id="strokeVal">12</b> px</label><input id="strokeWidth" type="range" min="0" max="24" value="12"></div>
+  </div>
+  <div class="two">
+    <div class="group"><label>文字颜色</label><div class="colorField"><input id="textColor" type="color" value="#ffffff"><span>填充色</span></div></div>
+    <div class="group"><label>描边颜色</label><div class="colorField"><input id="strokeColor" type="color" value="#4a3525"><span>轮廓色</span></div></div>
+  </div>
+  <div class="two">
+    <div class="group"><label for="align">文字对齐</label><select id="align"><option value="center">居中</option><option value="left">左对齐</option><option value="right">右对齐</option></select></div>
+    <div class="group"><label for="lineGap">行距 <b id="lineGapVal">1.08</b></label><input id="lineGap" type="range" min="85" max="145" value="108"></div>
+  </div>
+  <div class="group"><label for="pillColor">当前文字底色</label><div class="colorField"><input id="pillColor" type="color" value="#ff6b00"><span>贴纸 / 胶囊 / 提醒条</span></div></div>
+  <label class="checkline"><input id="shadow" type="checkbox" checked> 开启文字阴影</label>
+  <p class="help">在右侧预览中直接拖动贴纸、主标题、副标题或底部提醒即可调整位置。触屏设备也支持拖动。</p>
+  <hr>
+  <h2 class="sectionTitle">批量生成 <span>03 / BATCH</span></h2>
+  <div class="group"><label for="batchTemplate">批量套用模板</label><select id="batchTemplate"><option value="all">每张图依次使用不同模板</option><option value="current">全部使用当前模板</option></select></div>
+  <div class="group"><label for="batchUpload">选择多张实拍图</label><input id="batchUpload" type="file" accept="image/*" multiple></div>
+  <div class="buttonRow"><button id="addBatch" class="secondary">加入批量队列</button><button id="clearBatch" class="soft">清空队列</button></div>
+  <div id="batchList" class="batch" style="margin-top:10px"></div>
+  <button id="downloadBatch" class="primary" style="width:100%;margin-top:10px">⬇ 批量生成并下载 PNG（ZIP）</button>
+  <hr>
+  <h2 class="sectionTitle">自动高度长图 <span>04 / LONG</span></h2>
+  <p class="help">将批量队列中的封面按顺序纵向拼接为一张长图。高度随图片数量自动增长，导出为高清 PNG。</p>
+  <div class="buttonRow"><button id="makeLongImage" class="secondary">生成长图预览</button><button id="downloadLongImage" class="primary" disabled>下载长图 PNG</button></div>
+  <p id="longStatus" class="help">请先把图片加入批量队列，再生成长图。</p>
+</section>
+
+<section class="previewPanel">
+  <div class="previewHead"><div><h2>实时封面预览</h2><p>3:4 画布 · 900 × 1200 高清输出 · 拖拽文字调整布局</p></div><div class="buttonRow"><button id="downloadOne" class="primary">下载 PNG</button></div></div>
+  <div class="previewLayout">
+    <div><div class="stage"><div class="canvasWrap"><canvas id="canvas" width="900" height="1200" aria-label="封面预览"></canvas></div></div><p class="canvasHint">提示：拖动任意文字模块更改位置；文本过长时会自动折行。导出尺寸始终为 900 × 1200。</p></div>
+    <aside class="sideTools">
+      <div class="toolCard"><h3>图层位置</h3><div class="dragList"><div class="dragItem"><span>🔖 顶部贴纸</span><button data-layer="tag">选中</button></div><div class="dragItem"><span>✦ 主标题</span><button data-layer="main">选中</button></div><div class="dragItem"><span>💬 副标题</span><button data-layer="sub">选中</button></div><div class="dragItem"><span>📌 底部提醒</span><button data-layer="bottom">选中</button></div></div><p class="help">可先选中图层，再调字号、颜色和描边。</p></div>
+      <div class="toolCard"><h3>背景图片</h3><div class="group"><label for="brightness">亮度 <b id="brightnessVal">103%</b></label><input id="brightness" type="range" min="70" max="130" value="103"></div><div class="group"><label for="saturation">鲜艳度 <b id="saturationVal">115%</b></label><input id="saturation" type="range" min="70" max="150" value="115"></div><div class="group"><label for="contrast">对比度 <b id="contrastVal">108%</b></label><input id="contrast" type="range" min="70" max="140" value="108"></div></div>
+      <div class="toolCard"><h3>快捷操作</h3><div class="buttonRow"><button class="soft" id="centerLayer">图层居中</button><button class="soft" id="resetLayout">重置布局</button></div><p class="help">所有编辑均在当前浏览器本地完成，无需上传账号或服务器。</p></div>
+    </aside>
+  </div>
+</section>
+<section class="previewPanel" id="longPreviewPanel" style="margin-top:16px">
+  <div class="previewHead"><div><h2>自动高度长图预览</h2><p>900px 固定宽度 · 高度根据队列自动计算</p></div></div>
+  <div class="longPreviewStage" id="longPreviewStage"><p class="help">生成后将在这里显示完整长图，可滚动查看。</p></div>
+</section>
+</main>
+<div class="footerNote">木作封面工坊 · 作者：彭杰 · 联系微信：305519722</div>
+<script>
+const $=id=>document.getElementById(id);
+const canvas=$('canvas'),ctx=canvas.getContext('2d');
+const W=900,H=1200;
+const presets=[
+{id:'p0',name:'微水泥悬浮电视墙',desc:'橙底白字 · 质感路线',tag:'入住1年0翻车！',main:'微水泥+悬浮木作',sub:'离地15cm · 3000K洗墙灯带✨',bottom:'⚠️ 评论区扣【111】领施工图纸',mainColor:'#ffffff',stroke:'#4a3525',pillBg:'#ff6b00',tagBg:'#ff2442'},
+{id:'p1',name:'阳台打通一体柜',desc:'黄黑撞色 · 显大路线',tag:'视觉显大20㎡！',main:'阳台打通怎么做柜子？',sub:'洗烘一体完美内嵌 · 严丝合缝🔥',bottom:'🚨 水电进排水预留尺寸必看！',mainColor:'#ffe600',stroke:'#000000',pillBg:'#111111',tagBg:'#ff2442'},
+{id:'p2',name:'奶油风圆弧造型',desc:'焦糖咖色 · 温柔路线',tag:'被问了800遍！',main:'奶油风圆弧电视墙',sub:'R角丝滑无缝 · 防撞又温柔🍦',bottom:'📌 拒绝翻车成猪肝色！附色卡号',mainColor:'#fff8f0',stroke:'#6b4423',pillBg:'#d97724',tagBg:'#e64a19'},
+{id:'p3',name:'满墙电视柜收纳',desc:'红黄撞色 · 收纳路线',tag:'堪比多出1间房！',main:'满墙电视柜黄金法则',sub:'二八藏露原则 · 住5年都不乱🔥',bottom:'📐 净深35-40cm内部隔板分区图',mainColor:'#ffe600',stroke:'#1a1a1a',pillBg:'#ff2442',tagBg:'#d50000'},
+{id:'p4',name:'男生手办展示柜',desc:'电光科技 · 模玩路线',tag:'老公看完走不动道🔥',main:'整面墙做成手办柜！',sub:'极窄黑钛铝框 + 4000K层板灯🤖',bottom:'⚡ 防尘承重拉满！模玩党梦中情房',mainColor:'#00f0ff',stroke:'#000000',pillBg:'#ff2442',tagBg:'#6200ea'},
+{id:'p5',name:'极简无拉手衣柜',desc:'黑白高级 · 极简路线',tag:'越简单越耐看！',main:'无拉手衣柜这样做',sub:'反弹器+斜切拉手 · 立面更干净',bottom:'📏 柜门分缝与见光板细节图',mainColor:'#ffffff',stroke:'#252525',pillBg:'#252525',tagBg:'#ff2442'},
+{id:'p6',name:'入户玄关收纳柜',desc:'奶油撞红 · 入户路线',tag:'进门就被夸！',main:'玄关柜别只做鞋柜',sub:'换鞋凳+挂衣区+隐藏杂物位',bottom:'🧰 玄关尺寸规划清单建议收藏',mainColor:'#fff6e9',stroke:'#603a2c',pillBg:'#d84a38',tagBg:'#ff2442'},
+{id:'p7',name:'餐边柜水吧一体',desc:'柠檬黄 · 生活路线',tag:'小家幸福感拉满！',main:'餐边柜照着做不踩坑',sub:'咖啡区+小家电区 · 台面不打架',bottom:'☕ 插座高度与台面深度先规划',mainColor:'#ffe600',stroke:'#171717',pillBg:'#171717',tagBg:'#ff2442'},
+{id:'p8',name:'卧室通顶衣柜',desc:'粉橙撞色 · 卧室路线',tag:'收纳直接翻倍！',main:'卧室通顶柜避坑指南',sub:'封板到顶 · 侧封板细节别忽略',bottom:'📐 附柜体布局与尺寸参考',mainColor:'#fff4ec',stroke:'#7a382e',pillBg:'#f05a38',tagBg:'#c91635'},
+{id:'p9',name:'书房整墙书柜',desc:'蓝橙对撞 · 书房路线',tag:'书房显大有诀窍！',main:'整墙书柜怎么规划',sub:'开放格+封闭柜 · 藏书展示都能装',bottom:'📚 层板跨度与承重规划要点',mainColor:'#fff4cf',stroke:'#102c45',pillBg:'#075e83',tagBg:'#ff6b00'},
+{id:'p10',name:'楼梯下方定制柜',desc:'紫黄吸睛 · 畸零空间',tag:'1㎡都不浪费！',main:'楼梯下方这样做柜',sub:'斜角空间利用 · 清洁工具也有家',bottom:'📐 先复尺再深化，避免门板打架',mainColor:'#ffe600',stroke:'#26133d',pillBg:'#6c35ad',tagBg:'#ff2442'},
+{id:'p11',name:'电视背景隐形门',desc:'高级灰 · 细节路线',tag:'整面墙更完整！',main:'隐形门与木饰面同墙',sub:'纹理对齐 · 门缝与五金细节要盯紧',bottom:'🔎 施工节点与收口细节建议收藏',mainColor:'#ffffff',stroke:'#353535',pillBg:'#353535',tagBg:'#ff2442'}
+];
+let theme=presets[0],photo=null,photoURL=null,queue=[],selected='main';
+const defaults={tag:{x:50,y:60,w:0,h:68,size:38,fill:'#ffffff',stroke:'#ffffff',sw:0,bg:'#ff2442',align:'left'},main:{x:450,y:210,w:800,h:0,size:78,fill:'#ffffff',stroke:'#4a3525',sw:12,bg:'#ff6b00',align:'center'},sub:{x:450,y:313,w:820,h:0,size:42,fill:'#ffffff',stroke:'#ffffff',sw:0,bg:'#ff6b00',align:'center'},bottom:{x:450,y:1105,w:820,h:0,size:38,fill:'#111111',stroke:'#111111',sw:0,bg:'#ffe600',align:'center'}};
+let layers=JSON.parse(JSON.stringify(defaults));
+let filters={brightness:103,saturation:115,contrast:108},drag=null;
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function resetLayout(){layers=clone(defaults);layers.main.fill=theme.mainColor;layers.main.stroke=theme.stroke;layers.sub.bg=theme.pillBg;layers.tag.bg=theme.tagBg;layers.bottom.bg='#ffe600';layers.main.size=78;layers.sub.size=42;layers.tag.size=38;layers.bottom.size=38;renderControls();draw()}
+function renderPresets(){ $('presetGrid').innerHTML=presets.map((p,i)=>`<button class="preset ${p.id===theme.id?'active':''}" data-preset="${i}"><div class="swatches"><i style="background:${p.tagBg}"></i><i style="background:${p.pillBg}"></i><i style="background:${p.mainColor}"></i></div><strong>${p.name}</strong><small>${p.desc}</small></button>`).join('');document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>applyPreset(+b.dataset.preset))}
+function applyPreset(i,updateText=true){theme=presets[i];if(updateText){$('tagText').value=theme.tag;$('mainTitle').value=theme.main;$('subTitle').value=theme.sub;$('bottomTag').value=theme.bottom}
+layers.tag.bg=theme.tagBg;layers.main.fill=theme.mainColor;layers.main.stroke=theme.stroke;layers.sub.bg=theme.pillBg;layers.bottom.bg='#ffe600';renderPresets();renderControls();draw()}
+function textFor(k){return ({tag:$('tagText').value,main:$('mainTitle').value,sub:$('subTitle').value,bottom:$('bottomTag').value})[k]}
+function roundRect(x,y,w,h,r,fill){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();ctx.fillStyle=fill;ctx.fill()}
+function wrapText(text,maxWidth,font){ctx.font=font;const out=[];for(const para of String(text||'').split('\n')){if(!para){out.push('');continue}let line='';for(const char of [...para]){const test=line+char;if(line&&ctx.measureText(test).width>maxWidth){out.push(line);line=char}else line=test}out.push(line)}return out}
+function fitFont(k,text,maxWidth,maxLines){let size=layers[k].size;const min=k==='tag'?20:22;while(size>min){const f=`900 ${size}px "PingFang SC","Microsoft YaHei",sans-serif`;if(wrapText(text,maxWidth,f).length<=maxLines&&wrapText(text,maxWidth,f).every(line=>{ctx.font=f;return ctx.measureText(line).width<=maxWidth}))break;size-=1}return size}
+function drawTextLines(k,text,maxWidth,maxLines=3){const l=layers[k],font=`900 ${l.size}px "PingFang SC","Microsoft YaHei",sans-serif`;const actual=fitFont(k,text,maxWidth,maxLines);const f=`900 ${actual}px "PingFang SC","Microsoft YaHei",sans-serif`;const lines=wrapText(text,maxWidth,f).slice(0,maxLines);ctx.font=f;ctx.textAlign=l.align||'center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=l.sw;ctx.strokeStyle=l.stroke;ctx.fillStyle=l.fill;ctx.shadowColor=$('shadow').checked?'rgba(0,0,0,.5)':'transparent';ctx.shadowBlur=$('shadow').checked?12:0;ctx.shadowOffsetY=$('shadow').checked?4:0;const lineH=actual*(+$('lineGap').value/100);const startY=l.y-(lines.length-1)*lineH/2;const anchor=l.align==='left'?l.x:l.align==='right'?l.x:l.x;lines.forEach((line,i)=>{if(l.sw>0)ctx.strokeText(line,anchor,startY+i*lineH);ctx.fillText(line,anchor,startY+i*lineH)});ctx.shadowBlur=0;ctx.shadowOffsetY=0;return {lines,size:actual,lineH,height:lines.length*lineH,width:maxWidth}}
+function draw(){ctx.clearRect(0,0,W,H);if(photo){ctx.save();ctx.filter=`contrast(${filters.contrast}%) saturate(${filters.saturation}%) brightness(${filters.brightness}%)`;const r=W/H,ir=photo.width/photo.height;let sw=photo.width,sh=photo.height,sx=0,sy=0;if(ir>r){sw=photo.height*r;sx=(photo.width-sw)/2}else{sh=photo.width/r;sy=(photo.height-sh)/2}ctx.drawImage(photo,sx,sy,sw,sh,0,0,W,H);ctx.restore()}else{ctx.fillStyle='#dcd6dc';ctx.fillRect(0,0,W,H);ctx.fillStyle='#655b65';ctx.font='bold 34px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('请上传你的木作实拍照片',450,600);ctx.font='22px sans-serif';ctx.fillText('支持电视墙 · 定制柜 · 木饰面等',450,646)}
+let g=ctx.createLinearGradient(0,0,0,400);g.addColorStop(0,'rgba(0,0,0,.45)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,400);g=ctx.createLinearGradient(0,900,0,1200);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=g;ctx.fillRect(0,900,W,300);
+const t=layers.tag,tag=$('tagText').value;ctx.font=`900 ${t.size}px "PingFang SC","Microsoft YaHei",sans-serif`;const tagLines=wrapText(tag,330,ctx.font);const tagW=Math.min(800,Math.max(...tagLines.map(s=>ctx.measureText(s).width),0)+42),tagH=Math.max(58,tagLines.length*t.size*1.15+18);roundRect(t.x,t.y,tagW,tagH,14,t.bg);ctx.save();ctx.shadowColor=$('shadow').checked?'rgba(0,0,0,.3)':'transparent';ctx.shadowBlur=7;ctx.fillStyle=t.fill;ctx.font=`900 ${t.size}px "PingFang SC","Microsoft YaHei",sans-serif`;ctx.textAlign='left';ctx.textBaseline='middle';tagLines.forEach((line,i)=>ctx.fillText(line,t.x+18,t.y+tagH/2+(i-(tagLines.length-1)/2)*t.size*1.15));ctx.restore();
+layers.tag.w=tagW;layers.tag.h=tagH;const mainMax=820;const mainInfo=drawTextLines('main',$('mainTitle').value,mainMax,3);layers.main.h=mainInfo.height+20;layers.main.w=mainMax;
+const subLines=wrapText($('subTitle').value,740,`900 ${layers.sub.size}px "PingFang SC","Microsoft YaHei",sans-serif`);ctx.font=`900 ${layers.sub.size}px "PingFang SC","Microsoft YaHei",sans-serif`;const subW=Math.min(850,Math.max(160,...subLines.map(s=>ctx.measureText(s).width))+44),subH=Math.max(64,subLines.length*layers.sub.size*1.15+22);roundRect(layers.sub.x-subW/2,layers.sub.y-subH/2,subW,subH,Math.min(38,subH/2),layers.sub.bg);drawTextLines('sub',$('subTitle').value,subW-38,3);layers.sub.w=subW;layers.sub.h=subH;
+const botLines=wrapText($('bottomTag').value,740,`900 ${layers.bottom.size}px "PingFang SC","Microsoft YaHei",sans-serif`);ctx.font=`900 ${layers.bottom.size}px "PingFang SC","Microsoft YaHei",sans-serif`;const botW=Math.min(850,Math.max(160,...botLines.map(s=>ctx.measureText(s).width))+42),botH=Math.max(62,botLines.length*layers.bottom.size*1.15+18);roundRect(layers.bottom.x-botW/2,layers.bottom.y-botH/2,botW,botH,12,layers.bottom.bg);drawTextLines('bottom',$('bottomTag').value,botW-34,3);layers.bottom.w=botW;layers.bottom.h=botH;
+if(selected){ctx.save();ctx.setLineDash([8,7]);ctx.strokeStyle='rgba(255,36,66,.95)';ctx.lineWidth=3;const l=layers[selected];let x=l.x,y=l.y,w=l.w||250,h=l.h||60;if(selected==='tag'){x=l.x+w/2;y=l.y+h/2}else if(selected!=='main'){x=l.x;y=l.y}if(selected==='main'){ctx.strokeRect(x-w/2,y-h/2,w,h)}else if(selected==='tag'){ctx.strokeRect(l.x-5,l.y-5,w+10,h+10)}else ctx.strokeRect(x-w/2,y-h/2,w,h);ctx.restore()}
+}
+function renderControls(){if(!selected)return;const l=layers[selected];$('activeLayer').value=selected;$('fontSize').value=l.size;$('fontSizeVal').textContent=l.size;$('strokeWidth').value=l.sw;$('strokeVal').textContent=l.sw;$('textColor').value=l.fill;$('strokeColor').value=l.stroke;$('pillColor').value=l.bg;$('align').value=l.align||'center';$('lineGapVal').textContent=(+$('lineGap').value/100).toFixed(2)}
+function selectLayer(k){selected=k;renderControls();draw()}
+function loadPhoto(file){if(!file)return;const url=URL.createObjectURL(file),im=new Image();im.onload=()=>{photo=im;photoURL=url;draw()};im.onerror=()=>alert('图片读取失败，请换一张图片');im.src=url}
+$('upload').addEventListener('change',e=>loadPhoto(e.target.files[0]));
+$('clearImage').onclick=()=>{photo=null;if(photoURL)URL.revokeObjectURL(photoURL);photoURL=null;$('upload').value='';draw()};
+['tagText','mainTitle','subTitle','bottomTag'].forEach(id=>$(id).addEventListener('input',draw));
+$('resetText').onclick=()=>applyPreset(presets.findIndex(p=>p.id===theme.id));
+
+const subtitleBank = [
+  '尺寸先量准，安装少返工📐','收纳藏起来，空间更清爽✨','木纹对齐了，质感直接翻倍','灯光一打开，氛围感就来了💡',
+  '柜门缝隙均匀才显高级','入住后才懂的实用细节','好看只是基础，顺手更重要','小户型也能把收纳做满',
+  '无把手设计，立面更干净','封板到顶，少积灰更耐看','提前规划插座，台面不凌乱','板材环保等级记得看清',
+  '五金别省预算，天天都要用','转角这样做，空间不浪费','深度留对了，拿取更顺手','开放格少一点，更好打理',
+  '柜体分区合理，杂物各归位','同色木饰面，整体更统一','灯带藏好光源，见光不见灯','先做生活动线，再定柜体',
+  '施工节点盯紧，效果少翻车','现场复尺很重要，别只看效果图','极简不等于简单，细节才关键','好住的家，靠的是提前规划',
+  '奶油木色搭配，温柔又耐看','隐形收口做好，整面墙更完整','柜门比例舒服，视觉更显高','把常用物品放在顺手的位置',
+  '少做无效装饰，多留实用空间','选对饰面颜色，家里更显亮堂','收纳够不够，入住后最清楚','预算花在五金和细节上更值'
+];
+function pickRandomSub(excludeCurrent=true) {
+  const current = $('subTitle').value.trim();
+  let choices = subtitleBank.filter(s => !excludeCurrent || s !== current);
+  if (!choices.length) choices = subtitleBank;
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+$('randomSub').onclick = () => {
+  $('subTitle').value = pickRandomSub();
+  $('randomSubResults').style.display = 'none';
+  draw();
+};
+$('randomSubBatch').onclick = () => {
+  const chosen = [];
+  while (chosen.length < 5) {
+    const s = pickRandomSub(false);
+    if (!chosen.includes(s)) chosen.push(s);
+  }
+  const box = $('randomSubResults');
+  box.style.display = 'grid';
+  box.style.gap = '6px';
+  box.innerHTML = '<strong>点选一条应用到封面：</strong>' + chosen.map((s,i) =>
+    `<button type="button" class="secondary" data-randsub="${i}" style="text-align:left;white-space:normal">${i+1}. ${s}</button>`
+  ).join('');
+  box.querySelectorAll('[data-randsub]').forEach((b,i) => b.onclick = () => {
+    $('subTitle').value = chosen[i];
+    draw();
+    box.querySelectorAll('[data-randsub]').forEach(x => x.style.outline = 'none');
+    b.style.outline = '2px solid var(--red)';
+  });
+};
+
+$('activeLayer').onchange=e=>selectLayer(e.target.value);
+$('fontSize').oninput=e=>{layers[selected].size=+e.target.value;$('fontSizeVal').textContent=e.target.value;draw()};
+$('strokeWidth').oninput=e=>{layers[selected].sw=+e.target.value;$('strokeVal').textContent=e.target.value;draw()};
+$('textColor').oninput=e=>{layers[selected].fill=e.target.value;draw()};
+$('strokeColor').oninput=e=>{layers[selected].stroke=e.target.value;draw()};
+$('pillColor').oninput=e=>{layers[selected].bg=e.target.value;draw()};
+$('align').onchange=e=>{layers[selected].align=e.target.value;draw()};
+$('lineGap').oninput=e=>{$('lineGapVal').textContent=(+e.target.value/100).toFixed(2);draw()};
+$('shadow').onchange=draw;
+[['brightness','brightnessVal','%'],['saturation','saturationVal','%'],['contrast','contrastVal','%']].forEach(([id,label,suffix])=>$(id).oninput=e=>{filters[id]=+e.target.value;$(label).textContent=e.target.value+suffix;draw()});
+document.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>selectLayer(b.dataset.layer));
+$('centerLayer').onclick=()=>{if(selected==='tag'){layers.tag.x=50;layers.tag.y=60}else{layers[selected].x=450;layers[selected].y=selected==='main'?210:selected==='sub'?313:1105}draw()};
+$('resetLayout').onclick=resetLayout;
+function hitTest(x,y){const order=['bottom','sub','main','tag'];for(const k of order){const l=layers[k];let bx,by,bw,bh;if(k==='tag'){bw=l.w||300;bh=l.h||70;bx=l.x;by=l.y}else{bw=l.w||820;bh=l.h||100;bx=l.x-bw/2;by=l.y-bh/2}if(x>=bx-12&&x<=bx+bw+12&&y>=by-12&&y<=by+bh+12)return k}return null}
+function coords(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+canvas.addEventListener('pointerdown',e=>{const p=coords(e);const k=hitTest(p.x,p.y);if(!k)return;selectLayer(k);drag={k,start:p,orig:{x:layers[k].x,y:layers[k].y}};canvas.setPointerCapture(e.pointerId);e.preventDefault()});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;const p=coords(e),l=layers[drag.k];l.x=drag.orig.x+(p.x-drag.start.x);l.y=drag.orig.y+(p.y-drag.start.y);l.x=Math.max(0,Math.min(W,l.x));l.y=Math.max(0,Math.min(H,l.y));draw()});
+canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);
+function exportData(){return new Promise(resolve=>{const out=document.createElement('canvas');out.width=W;out.height=H;const old=selected;selected=null;draw();out.getContext('2d').drawImage(canvas,0,0);selected=old;draw();out.toBlob(blob=>resolve(blob),'image/png')})}
+function filename(s){return (s||'木作封面').replace(/[\\/:*?"<>|]/g,'_').slice(0,60)}
+async function downloadOne(){const blob=await exportData();const a=document.createElement('a');const url=URL.createObjectURL(blob);a.href=url;a.download='小红书封面_'+filename($('mainTitle').value)+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+$('downloadOne').onclick=downloadOne;
+
+let loadingQueue=false;
+function message(text){$('workStatus').textContent=text}
+function invalidateLong(){generatedLongCanvas=null;$('downloadLongImage').disabled=true;$('longPreviewStage').replaceChildren();$('longStatus').textContent='队列或设置已更新，请重新生成长图。'}
+function release(q){URL.revokeObjectURL(q.url);q.img.src=''}
+function decodeFile(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();img.onload=()=>resolve({file,url,img});img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error(file.name+' 不是可读取的图片'))};img.src=url})}
+$('addBatch').onclick=async()=>{if(loadingQueue)return;const files=Array.from($('batchUpload').files);if(!files.length){message('请先选择图片');return}if(queue.length+files.length>20){message('队列最多支持20张图片，请分批添加。');return}loadingQueue=true;$('addBatch').disabled=true;$('clearBatch').disabled=true;let failed=0;try{for(const file of files){try{queue.push(await decodeFile(file));renderBatch()}catch(e){failed++;message(e.message)}}invalidateLong();message('已按选择顺序加入 '+(files.length-failed)+' 张图片'+(failed?'，跳过 '+failed+' 张无效图片':''));$('batchUpload').value=''}finally{loadingQueue=false;$('addBatch').disabled=false;$('clearBatch').disabled=false}};
+$('clearBatch').onclick=()=>{queue.forEach(release);queue=[];renderBatch();invalidateLong();message('队列已清空')};
+function renderBatch(){const list=$('batchList');list.replaceChildren();queue.forEach((q,i)=>{const row=document.createElement('div');row.className='batchItem';const img=document.createElement('img');img.src=q.url;img.alt='队列图片 '+(i+1);const info=document.createElement('div'),title=document.createElement('strong'),size=document.createElement('small');title.textContent=(i+1)+'. '+q.file.name;size.textContent=q.img.width+' × '+q.img.height+'px';info.append(title,size);const actions=document.createElement('div');actions.className='batchActions';for(const [label,delta] of [['↑',-1],['↓',1],['×',0]]){const button=document.createElement('button');button.className='soft';button.textContent=label;button.title=delta===0?'移除':delta<0?'上移':'下移';button.setAttribute('aria-label',button.title+'第'+(i+1)+'张图片');button.disabled=delta!==0&&(i+delta<0||i+delta>=queue.length);button.onclick=()=>{if(loadingQueue||busy)return;if(delta){[queue[i],queue[i+delta]]=[queue[i+delta],queue[i]]}else release(queue.splice(i,1)[0]);renderBatch();invalidateLong()};actions.append(button)}row.append(img,info,actions);list.append(row)})}
+async function blobFromCanvas(c){return new Promise(resolve=>c.toBlob(resolve,'image/png'))}
+function makeBatchCanvas(q,index){const saved={photo,theme,layers:clone(layers),selected,texts:textValues()};try{photo=q.img;selected='main';const pi=Number.isInteger(q.presetIndex)?q.presetIndex:($('batchTemplate').value==='current'?null:index%presets.length);if(pi!==null)applyPreset(pi);if(q.copy)setTexts(q.copy);selected=null;draw();const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').drawImage(canvas,0,0);return c}finally{photo=saved.photo;theme=saved.theme;layers=saved.layers;selected=saved.selected;setTexts(saved.texts);renderPresets();renderControls();draw()}}
+// ZIP helpers: package all generated PNGs into one download, avoiding browser multi-download blocking.
+function crc32(bytes){let crc=-1;for(let i=0;i<bytes.length;i++){crc^=bytes[i];for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}return (crc^-1)>>>0}
+function u16(n){return [n&255,(n>>>8)&255]}
+function u32(n){return [n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]}
+function concatBytes(parts){let len=0;for(const p of parts)len+=p.length;const out=new Uint8Array(len);let off=0;for(const p of parts){out.set(p,off);off+=p.length}return out}
+function makeZip(files){const enc=new TextEncoder(),locals=[],centrals=[];let offset=0;for(const file of files){const name=enc.encode(file.name),data=new Uint8Array(file.data),crc=crc32(data);const local=concatBytes([new Uint8Array([0x50,0x4b,0x03,0x04]),new Uint8Array([...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0)]),name,data]);locals.push(local);const central=concatBytes([new Uint8Array([0x50,0x4b,0x01,0x02]),new Uint8Array([...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset)]),name]);centrals.push(central);offset+=local.length}const centralBytes=concatBytes(centrals),end=concatBytes([new Uint8Array([0x50,0x4b,0x05,0x06]),new Uint8Array([...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(centralBytes.length),...u32(offset),...u16(0)])]);return concatBytes([...locals,centralBytes,end])}
+let generatedLongCanvas=null;
+
+let busy=false;
+function textValues(){return ['tagText','mainTitle','subTitle','bottomTag'].map(id=>$(id).value)}
+function setTexts(texts){['tagText','mainTitle','subTitle','bottomTag'].forEach((id,i)=>$(id).value=texts[i])}
+function downloadBlob(blob,name){if(!blob)throw new Error('无法生成文件，请减少图片数量重试');const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000)}
+async function job(button,work){if(busy||loadingQueue)return;busy=true;const old=button.textContent;const controls=Array.from(document.querySelectorAll('input,select,textarea,button'));const disabled=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);try{await work()}catch(e){console.error(e);message('操作失败：'+e.message)}finally{controls.forEach((x,i)=>x.disabled=disabled[i]);button.textContent=old;busy=false;$('downloadLongImage').disabled=!generatedLongCanvas}}
+$('makeLongImage').onclick=()=>job($('makeLongImage'),async()=>{
+ if(!queue.length){message('请先把图片加入批量队列');return}
+ invalidateLong();const c=document.createElement('canvas');c.width=W;c.height=H*queue.length;const cc=c.getContext('2d');if(!cc)throw new Error('画布创建失败');
+ for(let i=0;i<queue.length;i++){message('正在拼接长图 '+(i+1)+' / '+queue.length);await new Promise(r=>setTimeout(r,0));const card=makeBatchCanvas(queue[i],i);cc.drawImage(card,0,i*H);card.width=card.height=0}
+ const blob=await blobFromCanvas(c);if(!blob)throw new Error('长图过大，请减少图片数量');generatedLongCanvas=c;$('longPreviewStage').replaceChildren(c);$('longStatus').textContent=W+' × '+c.height+' px · '+queue.length+' 张封面';message('长图已生成，可以下载 PNG。')
+});
+$('downloadLongImage').onclick=()=>job($('downloadLongImage'),async()=>{if(!generatedLongCanvas)return;downloadBlob(await blobFromCanvas(generatedLongCanvas),'木作长图_'+(generatedLongCanvas.height/H)+'张.png');message('长图 PNG 已导出')});
+$('downloadBatch').onclick=()=>job($('downloadBatch'),async()=>{if(!queue.length){message('请先把图片加入批量队列');return}const files=[];for(let i=0;i<queue.length;i++){message('正在生成封面 '+(i+1)+' / '+queue.length);await new Promise(r=>setTimeout(r,0));const c=makeBatchCanvas(queue[i],i),blob=await blobFromCanvas(c);if(!blob)throw new Error('图片导出失败');files.push({name:'木作封面_'+String(i+1).padStart(2,'0')+'.png',data:await blob.arrayBuffer()});c.width=c.height=0}message('正在打包 ZIP');downloadBlob(new Blob([makeZip(files)],{type:'application/zip'}),'木作封面批量成品.zip');message(queue.length+' 张封面已打包导出')});
+$('downloadOne').onclick=()=>job($('downloadOne'),async()=>{downloadBlob(await exportData(),'木作封面_'+filename($('mainTitle').value)+'.png');message('900 × 1200 PNG 已导出')});
+let photoTicket=0;
+loadPhoto=async function(file){if(!file)return;const ticket=++photoTicket;try{const q=await decodeFile(file);if(ticket!==photoTicket){release(q);return}if(photoURL)URL.revokeObjectURL(photoURL);photo=q.img;photoURL=q.url;draw();message('图片已载入：'+file.name)}catch(e){message(e.message)}};
+$('clearImage').onclick=()=>{photoTicket++;photo=null;if(photoURL)URL.revokeObjectURL(photoURL);photoURL=null;$('upload').value='';draw()};
+const storageKey='woodwork-cover-studio-v2';
+function saveSettings(){try{localStorage.setItem(storageKey,JSON.stringify({theme:theme.id,layers,filters,texts:textValues(),lineGap:$('lineGap').value,shadow:$('shadow').checked,batchTemplate:$('batchTemplate').value}))}catch{message('浏览器未允许保存设置，仍可正常导出。')}}
+function restoreSettings(){try{const s=JSON.parse(localStorage.getItem(storageKey));if(!s)return;const p=presets.find(x=>x.id===s.theme);if(!p||!Array.isArray(s.texts)||s.texts.length!==4)return;theme=p;for(const k of Object.keys(defaults)){if(!s.layers?.[k])return;for(const n of ['x','y','size','sw'])if(!Number.isFinite(s.layers[k][n]))return}layers=s.layers;filters=s.filters;setTexts(s.texts);$('lineGap').value=s.lineGap;$('shadow').checked=s.shadow;$('batchTemplate').value=s.batchTemplate;for(const id of ['brightness','saturation','contrast']){$(id).value=filters[id];$(id+'Val').textContent=filters[id]+'%'}}catch{}}
+document.querySelector('.app').addEventListener('input',e=>{if(e.target.type==='file'||busy)return;invalidateLong();saveSettings()});
+document.querySelector('.app').addEventListener('change',e=>{if(e.target.type==='file'||busy)return;invalidateLong();saveSettings()});
+document.querySelector('.app').addEventListener('click',e=>{if(busy)return;if(e.target.closest('.preset')||['randomSub','randomSubBatch','resetText','resetLayout','centerLayer'].includes(e.target.id)||e.target.hasAttribute('data-randsub')){invalidateLong();saveSettings()}});
+canvas.addEventListener('pointerup',()=>{invalidateLong();saveSettings()});
+restoreSettings();
+renderPresets();renderControls();draw();
+</script>
+<section id="batchWorkspace" class="previewPanel"></section><script>const copyCatalog=[{"id":"wardrobe","name":"衣柜","preset":5,"titles":["卧室衣柜设计灵感","衣柜立面这样搭","一面衣柜的设计细节"],"subs":["柜门比例与整体配色，值得参考","把衣柜融入卧室的整体设计","从立面细节寻找木作灵感"]},{"id":"bookcase","name":"书桌书柜","preset":9,"titles":["书桌书柜一体设计","书房木作搭配灵感","让书柜融入生活"],"subs":["书桌与书柜的组合，值得参考","展示与收纳的布局灵感","从书房布局寻找设计思路"]},{"id":"sideboard","name":"餐边柜酒柜","preset":7,"titles":["餐边柜设计灵感","餐厅木作这样搭","餐边柜的布局细节"],"subs":["从柜体与餐厅的搭配寻找灵感","展示与收纳，让餐厅更完整","柜门配色与台面布局参考"]},{"id":"tv","name":"电视柜背景墙","preset":3,"titles":["电视柜与背景墙设计","客厅木作搭配灵感","一面电视墙的设计细节"],"subs":["电视墙与柜体的组合参考","客厅立面与整体配色灵感","从布局和比例看客厅木作"]},{"id":"kitchen","name":"橱柜","preset":7,"titles":["厨房橱柜设计灵感","厨房柜体这样搭","橱柜布局与配色参考"],"subs":["从柜门与台面的搭配寻找灵感","厨房空间的柜体设计参考","布局与配色，先看整体关系"]},{"id":"tatami","name":"榻榻米","preset":8,"titles":["榻榻米空间设计灵感","小房间木作搭配参考","榻榻米与柜体的组合"],"subs":["从整体布局寻找空间灵感","柜体与休息区的组合参考","小空间也能有完整设计思路"]},{"id":"entry","name":"玄关鞋柜","preset":6,"titles":["玄关柜设计灵感","入户空间这样搭","鞋柜与玄关的组合"],"subs":["从入户布局看收纳设计","柜体比例与整体配色参考","进门第一眼的木作搭配"]},{"id":"laundry","name":"阳台洗衣柜","preset":1,"titles":["阳台洗衣柜设计参考","阳台柜体搭配灵感","洗衣区这样规划"],"subs":["洗衣区与柜体的组合灵感","从阳台布局寻找实用思路","柜门与台面的整体搭配参考"]},{"id":"display","name":"展示柜","preset":4,"titles":["展示柜设计灵感","把收藏融入木作设计","展示与收纳的搭配"],"subs":["从展示格布局寻找设计思路","柜体与陈列的整体搭配","展示区比例与配色参考"]},{"id":"stairs","name":"楼梯下柜","preset":10,"titles":["楼梯下柜体设计参考","楼梯空间的木作灵感","顺着楼梯做收纳"],"subs":["从空间形状出发安排柜体","楼梯与柜体的组合参考","不规则空间的设计思路"]},{"id":"other","name":"待确认","preset":null,"titles":[],"subs":[]}];</script><script>// Local batch copy workspace. No photos are sent to third-party services.
+const batchWorkspace=$('batchWorkspace');
+document.querySelector('.app').insertBefore(batchWorkspace,$('longPreviewPanel'));
+batchWorkspace.innerHTML=`<div class="batchIntro"><div><h2>智能批量工作台</h2><p>识别柜型 → 匹配文案 → 检查成品 → 准备小红书发布包</p></div><div id="batchStats" class="batchStats">0 / 20 张图片</div></div><div id="batchStatus" class="batchState" role="status" aria-live="polite">添加图片后，可按照片内容匹配柜型与文案。所有建议均可修改。</div><div class="batchBar"><button id="autoMatchBatch" class="primary">自动匹配图片与文案</button><button id="copyCurrentBatch" class="soft">套用当前文案</button><button id="randomCopyBatch" class="soft">分配不同副标题</button><button id="togglePaste" class="soft">整批粘贴文案</button><button id="previewBatch" class="secondary">预览全部成品</button></div><label class="checkline"><input id="autoMatchOnAdd" type="checkbox"> 加入队列后自动匹配（首次需下载识图模型）</label><p id="visionStatus" class="help">正在连接本地识图服务…</p><div id="pastePanel" class="importArea" hidden><label for="pasteCopy" class="fieldLabel">每张图一行：主标题〔Tab〕副标题</label><textarea id="pasteCopy" rows="6" placeholder="卧室衣柜设计灵感&#9;柜门比例与整体配色参考&#10;书桌书柜一体设计&#9;展示与收纳的布局灵感"></textarea><p class="help">支持从表格复制两列，也支持每行一个主标题。行数必须与队列一致，空副标题会清空该项。</p><button id="applyPaste" class="secondary">按队列顺序应用</button></div><div id="queueControls" class="batchControls"></div><div id="queueBody"></div><div class="batchExport" id="batchExport"></div><details class="importArea"><summary>小红书发布准备</summary><p class="help">生成标题、正文和配图压缩包。当前版本不自动提交到小红书账号。</p><div class="publishFields"><label>笔记标题<input id="noteTitle" type="text" maxlength="80" placeholder="例如：这组木作设计，值得收藏"></label><label>笔记正文<textarea id="noteBody" rows="6" placeholder="可一键生成初稿，再按自己的表达修改"></textarea></label></div><div class="buttonRow"><button id="generateNote" class="soft">生成笔记初稿</button><button id="downloadPublishPack" class="primary">下载小红书发布包</button></div></details>`;
+// Move existing controls instead of duplicating them; the original handlers stay intact.
+const oldPanel=document.querySelector('.panel'),batchHeading=Array.from(oldPanel.querySelectorAll('h2')).find(x=>x.textContent.includes('批量生成'));
+if(batchHeading){let node=batchHeading.nextSibling;while(node){const next=node.nextSibling;if(node.nodeType===1){if(node.matches('.group'))$('queueControls').append(node);else if(node.id==='batchList')$('queueBody').append(node);else if(node.id==='downloadBatch'||node.classList.contains('buttonRow'))$('batchExport').append(node);else if(node.id==='longStatus')$('batchExport').append(node);else if(node.matches('h2,p,hr'))node.remove()}else node.remove();node=next}batchHeading.previousElementSibling?.matches('hr')&&batchHeading.previousElementSibling.remove();batchHeading.remove()}
+$('downloadBatch').style.cssText='';
+const baseMessage=message;message=function(text){baseMessage(text);$('batchStatus').textContent=text};
+const crcTable=Uint32Array.from({length:256},(_,n)=>{let c=n;for(let j=0;j<8;j++)c=(c>>>1)^((c&1)?0xedb88320:0);return c>>>0});
+crc32=function(bytes){let c=0xffffffff;for(const b of bytes)c=(c>>>8)^crcTable[(c^b)&255];return (c^0xffffffff)>>>0};
+function effectiveCopy(q,i){if(q.copy)return [...q.copy];const p=Number.isInteger(q.presetIndex)?presets[q.presetIndex]:($('batchTemplate').value==='current'?null:presets[i%presets.length]);return p?[p.tag,p.main,p.sub,p.bottom]:textValues()}
+function copyForCategory(cat,i){return ['木作设计灵感',cat.titles[i%cat.titles.length],cat.subs[i%cat.subs.length],'收藏这份木作设计灵感']}
+function markPreviewsStale(){queue.forEach((q,i)=>{delete q.preview;const img=$('batchList').children[i]?.querySelector('img');if(img){img.src=q.url;img.alt='原图 · 成品预览待更新'}})}
+function changedBatch(){markPreviewsStale();invalidateLong();updateBatchStats()}
+function updateBatchStats(){const matched=queue.filter(q=>q.match&&!q.match.review).length;$('batchStats').textContent=queue.length+' / 20 张图片 · '+matched+' 张已匹配'}
+renderBatch=function(){const list=$('batchList');list.replaceChildren();updateBatchStats();if(!queue.length){const empty=document.createElement('div');empty.className='batchListEmpty';empty.textContent='选择多张实拍图，点击“加入批量队列”开始';list.append(empty);return}queue.forEach((q,i)=>{const card=document.createElement('div');card.className='batchItem';const img=document.createElement('img');img.src=q.preview||q.url;img.alt='第'+(i+1)+'张'+(q.preview?'成品预览':'原图');const title=document.createElement('strong');title.textContent=(i+1)+'. '+q.file.name;const badge=document.createElement('div');badge.className='batchBadge'+(q.match?.review?' review':'');badge.textContent=q.manual?'文案已手动修改':q.match?(q.match.review?'待确认 · 请手选柜型':'按照片识别 · '+(copyCatalog.find(c=>c.id===q.match.id)?.name||'')):'尚未识别';const fields=document.createElement('div');fields.className='batchFields';const category=document.createElement('select');category.setAttribute('aria-label','第'+(i+1)+'张柜型');for(const c of copyCatalog){const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.id==='other'?'柜型待确认':c.name;category.append(opt)}category.value=q.match?.id||'other';category.onchange=()=>{if(busy)return;const c=copyCatalog.find(c=>c.id===category.value);if(c.id==='other'){delete q.match;delete q.presetIndex}else{q.match={id:c.id,review:false,source:'manual'};q.presetIndex=c.preset;q.copy=copyForCategory(c,i);q.manual=true}changedBatch();renderBatch()};fields.append(category);const vals=effectiveCopy(q,i);for(const [index,label] of [[1,'主标题'],[2,'副标题']]){const lab=document.createElement('label');lab.textContent=label;const input=document.createElement('input');input.type='text';input.value=vals[index];input.maxLength=120;input.setAttribute('aria-label','第'+(i+1)+'张'+label);input.oninput=()=>{if(busy)return;q.copy=effectiveCopy(q,i);q.copy[index]=input.value;q.manual=true;delete q.preview;badge.textContent='文案已手动修改';invalidateLong();updateBatchStats()};lab.append(input);fields.append(lab)}const actions=document.createElement('div');actions.className='batchActions';for(const [txt,delta] of [['上移',-1],['下移',1],['移除',0]]){const b=document.createElement('button');b.textContent=txt;b.className='soft';b.setAttribute('aria-label',txt+'第'+(i+1)+'张图片');b.disabled=delta!==0&&(i+delta<0||i+delta>=queue.length);b.onclick=()=>{if(busy||loadingQueue)return;if(delta)[queue[i],queue[i+delta]]=[queue[i+delta],queue[i]];else release(queue.splice(i,1)[0]);changedBatch();renderBatch()};actions.append(b)}card.append(img,title,badge,fields,actions);list.append(card)})};
+const oldAddBatch=$('addBatch').onclick;
+$('addBatch').onclick=async()=>{await oldAddBatch();renderBatch();if($('autoMatchOnAdd').checked&&visionReady)await matchBatch()};
+$('copyCurrentBatch').onclick=()=>{if(busy)return;queue.forEach(q=>{q.copy=textValues();q.manual=true});changedBatch();renderBatch();message('当前文案已套用到 '+queue.length+' 张图片')};
+const safeBatchSubtitles=['柜体比例与整体配色参考','从立面布局寻找设计灵感','空间与木作的搭配思路','用细节串起整体设计','柜门分区值得仔细看','从照片里寻找配色灵感','一组可以收藏的木作参考','先看整体，再看局部细节','把喜欢的设计整理起来','关注柜体与空间的关系','不同布局，不同设计思路','从这一面柜体寻找灵感','木作设计的整体表达','适合留作方案沟通参考','从柜门比例开始看设计','实用布局与视觉搭配参考','为下一次装修收集灵感','空间设计从日常需求开始','值得参考的木作组合','把设计灵感融入日常生活','从布局到配色一起看','整理一份自己的木作灵感'];
+$('randomCopyBatch').onclick=()=>{if(busy)return;const choices=[...safeBatchSubtitles];for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]]}queue.forEach((q,i)=>{q.copy=effectiveCopy(q,i);q.copy[2]=choices[i];q.manual=true});changedBatch();renderBatch();message('已分配 '+queue.length+' 条不重复副标题，检查后即可出图')};
+$('togglePaste').onclick=()=>{$('pastePanel').hidden=!$('pastePanel').hidden};
+$('applyPaste').onclick=()=>{if(!queue.length){message('请先加入图片');return}const lines=$('pasteCopy').value.trim().split(/\r?\n/);if(lines.length!==queue.length){message('未应用：文案有 '+lines.length+' 行，队列有 '+queue.length+' 张，请调整为一一对应');return}const rows=lines.map(l=>l.split('\t'));if(rows.some(r=>!r[0].trim())){message('未应用：每行都需要主标题');return}queue.forEach((q,i)=>{q.copy=effectiveCopy(q,i);q.copy[1]=rows[i][0].trim();if(rows[i].length>1)q.copy[2]=rows[i][1].trim();q.manual=true});changedBatch();renderBatch();message('已按顺序应用 '+queue.length+' 行文案')};
+$('previewBatch').onclick=async()=>{await job($('previewBatch'),async()=>{if(!queue.length){message('请先加入图片');return}for(let i=0;i<queue.length;i++){message('正在预览 '+(i+1)+' / '+queue.length);await new Promise(r=>setTimeout(r,0));const c=makeBatchCanvas(queue[i],i),t=document.createElement('canvas');t.width=225;t.height=300;t.getContext('2d').drawImage(c,0,0,225,300);queue[i].preview=t.toDataURL('image/webp',.8);c.width=c.height=0}message('成品预览已更新，导出将使用对应的逐图文案')});renderBatch()};
+let visionReady=true;async function checkVision(){visionReady=true;$('visionStatus').textContent='浏览器内识图 · 首次使用需下载约154MB模型 · 图片不上传云端';}
+function inferenceImage(q){const c=document.createElement('canvas'),scale=Math.min(1,768/Math.max(q.img.width,q.img.height));c.width=Math.max(1,Math.round(q.img.width*scale));c.height=Math.max(1,Math.round(q.img.height*scale));c.getContext('2d').drawImage(q.img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.85)}
+async function matchBatch(){if(!queue.length){message('请先加入图片');return}if(!visionReady){await checkVision();if(!visionReady){message('浏览器识图尚未就绪，请稍后重试或手选柜型');return}}await job($('autoMatchBatch'),async()=>{let count=0,review=0;for(let i=0;i<queue.length;i++){const q=queue[i];if(q.manual||q.match)continue;message('正在看图匹配 '+(i+1)+' / '+queue.length+'，已手改文案会保留');const result=await window.browserVision.match(inferenceImage(q),browserCopyCatalog);q.match=result;if(result.review)review++;else{const c=copyCatalog.find(c=>c.id===result.id);q.copy=copyForCategory(c,i);q.presetIndex=c.preset;count++}}changedBatch();message('匹配完成：'+count+' 张已配文，'+review+' 张需要确认；手改文案已保留')});renderBatch()}
+$('autoMatchBatch').onclick=matchBatch;
+function noteDraft(){const cats=[...new Set(queue.map(q=>copyCatalog.find(c=>c.id===q.match?.id)?.name).filter(n=>n&&n!=='待确认'))];const topic=cats.length===1?cats[0]:'木作';return {title:topic+'设计灵感｜这组搭配值得收藏',body:'整理了一组'+topic+'设计参考，分享给正在找灵感的朋友。\n\n'+queue.map((q,i)=>(i+1)+'. '+effectiveCopy(q,i)[1]+'\n'+effectiveCopy(q,i)[2]).join('\n\n')+'\n\n图片用于设计参考，具体尺寸、材料和工艺需结合实际方案确认。\n\n#全屋定制 #木作设计 #装修灵感'}}
+$('generateNote').onclick=()=>{if(!queue.length){message('请先加入图片');return}const n=noteDraft();$('noteTitle').value=n.title;$('noteBody').value=n.body;message('小红书笔记初稿已生成，可在发布前修改')};
+$('downloadPublishPack').onclick=()=>job($('downloadPublishPack'),async()=>{if(!queue.length){message('请先加入图片');return}if(!$('noteTitle').value.trim()||!$('noteBody').value.trim()){message('请先生成或填写笔记标题与正文');return}const files=[],enc=new TextEncoder();for(let i=0;i<queue.length;i++){message('正在准备发布配图 '+(i+1)+' / '+queue.length);await new Promise(r=>setTimeout(r,0));const c=makeBatchCanvas(queue[i],i),b=await blobFromCanvas(c);if(!b)throw new Error('配图导出失败');files.push({name:'配图_'+String(i+1).padStart(2,'0')+'.png',data:await b.arrayBuffer()});c.width=c.height=0}files.push({name:'笔记文案.txt',data:enc.encode($('noteTitle').value+'\n\n'+$('noteBody').value)});downloadBlob(new Blob([makeZip(files)],{type:'application/zip'}),'小红书图文发布包.zip');message('发布包已生成：对应配图＋标题正文；尚未提交到小红书')});
+document.querySelector('.app').addEventListener('input',e=>{if(e.target.id==='noteTitle'||e.target.id==='noteBody'||e.target.id==='pasteCopy')return;markPreviewsStale()});
+document.querySelector('.app').addEventListener('change',e=>{if(e.target.id==='batchTemplate') {changedBatch();renderBatch()}});
+const prepareButton=document.createElement('button');prepareButton.id='preparePublish';prepareButton.className='dark';prepareButton.textContent='一键准备发布';document.querySelector('.batchBar').prepend(prepareButton);
+prepareButton.onclick=async()=>{if(busy||loadingQueue)return;if(!queue.length){message('请先加入图片');return}if(queue.some(q=>!q.manual&&!q.match)){await matchBatch();if(!visionReady)return}const pending=queue.filter(q=>q.match?.review||(!q.match&&!q.manual)).length;if(pending){message(pending+' 张图片需要确认柜型，请逐图选择后再准备发布');return}await $('previewBatch').onclick();$('generateNote').onclick();$('generateNote').closest('details').open=true;$('noteTitle').scrollIntoView({behavior:'smooth',block:'center'});message('配图预览和笔记初稿已准备好。核对后可下载发布包')};
+const publishAction=$('downloadPublishPack').onclick;$('downloadPublishPack').onclick=()=>{if(queue.some(q=>q.match?.review)){message('请先确认标为“待确认”的柜型，避免图片与文案不符');return}return publishAction()};
+const creatorLink=document.createElement('a');creatorLink.href='https://creator.xiaohongshu.com/publish/publish';creatorLink.target='_blank';creatorLink.rel='noopener noreferrer';creatorLink.textContent='打开小红书发布页 ↗';creatorLink.style.cssText='display:inline-block;margin-top:14px;color:#bd1731;font-size:13px;font-weight:700';$('generateNote').closest('details').append(creatorLink);
+document.querySelector('.app').addEventListener('click',e=>{if(e.target.closest('.preset')||['randomSub','randomSubBatch','resetText','resetLayout','centerLayer'].includes(e.target.id)||e.target.hasAttribute('data-randsub'))markPreviewsStale()});
+let noteFingerprint=null;
+function queueFingerprint(){return JSON.stringify(queue.map((q,i)=>[q.file.name,q.file.size,q.file.lastModified,effectiveCopy(q,i)]))}
+const baseGenerateNote=$('generateNote').onclick;$('generateNote').onclick=()=>{baseGenerateNote();if(queue.length)noteFingerprint=queueFingerprint()};
+const checkedPublishAction=$('downloadPublishPack').onclick;$('downloadPublishPack').onclick=()=>{if(noteFingerprint&&noteFingerprint!==queueFingerprint()){message('图片顺序或文案已变化，请重新生成笔记初稿，核对后再导出');return}return checkedPublishAction()};
+renderBatch();checkVision();
+</script></body>
+</html>
