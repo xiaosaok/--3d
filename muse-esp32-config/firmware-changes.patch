@@ -1,0 +1,268 @@
+diff --git a/esp32/components/muse/muse_chat_session.cpp b/esp32/components/muse/muse_chat_session.cpp
+index a6ad810..62b54f6 100644
+--- a/esp32/components/muse/muse_chat_session.cpp
++++ b/esp32/components/muse/muse_chat_session.cpp
+@@ -52,6 +52,7 @@
+ #include "esp_attr.h"
+ #include "esp_crt_bundle.h"
+ #include "esp_heap_caps.h"
++#include "esp_http_client.h"
+ #include "esp_log.h"
+ #include "esp_random.h"
+ #include "esp_timer.h"
+@@ -1501,6 +1502,48 @@ static void on_chat_ack(stream_t *s)
+ 
+ /* ---- Turn: speech ---- */
+ 
++/* Local PC TTS returns 16 kHz mono PCM. The existing voice task consumes the
++ * stream concurrently; reply text and generated speech stay on the LAN. */
++static bool local_tts(msg_t &m, int index)
++{
++    if (!s_turn.texts || !muse_settings_speaker_on()) return false;
++    const char *text = s_turn.texts + index * TEXT_MAX;
++    size_t length = strnlen(text, TEXT_MAX);
++    if (!length || length >= TEXT_MAX) return false;
++    esp_http_client_config_t cfg = {};
++    cfg.url = "http://192.0.2.10:4215/speech";
++    cfg.method = HTTP_METHOD_POST;
++    cfg.timeout_ms = 30000;
++    esp_http_client_handle_t client = esp_http_client_init(&cfg);
++    if (!client) return false;
++    bool success = false;
++    size_t written = 0;
++    if (esp_http_client_open(client, (int)length) == ESP_OK &&
++        esp_http_client_write(client, text, (int)length) == (int)length) {
++        int64_t bytes = esp_http_client_fetch_headers(client);
++        if (bytes > 0 && bytes <= 16000 * 2 * 180 && esp_http_client_get_status_code(client) == 200) {
++            m.pcm_frames = (uint32_t)(bytes / 2);
++            uint8_t chunk[1024];
++            while (written < (size_t)bytes && s_turn.gen == s_gen.load()) {
++                int n = esp_http_client_read(client, (char *)chunk, sizeof(chunk));
++                if (n <= 0) break;
++                size_t at = 0;
++                while (at < (size_t)n && s_turn.gen == s_gen.load()) {
++                    size_t sent = xStreamBufferSend(s_out, chunk + at, n - at, pdMS_TO_TICKS(500));
++                    at += sent;
++                }
++                written += at;
++                s_turn.pcm_out += at / sizeof(int16_t);
++            }
++            success = written == (size_t)bytes;
++        }
++    }
++    esp_http_client_close(client);
++    esp_http_client_cleanup(client);
++    if (!success) ESP_LOGW(TAG, "local speech unavailable or interrupted");
++    return success || written > 0;
++}
++
+ static void start_tts(void)
+ {
+     if (s_turn.tts_msg >= 0) {
+@@ -1527,12 +1570,18 @@ static void start_tts(void)
+          * and finishes the message once it's drained.
+          */
+         m.pcm_start = s_turn.pcm_out;
+-        m.pcm_frames = (uint32_t)(m.len * MIC_RATE / TEXT_CHARS_PER_S);
+         m.tts = TTS_ACTIVE;
+         s_turn.tts_msg = i;
+-        s_turn.silent = true;
+         ESP_LOGI(TAG, "showing message %s (%u chars)", m.id, (unsigned)m.len);
+         show_reply_start(m);
++        if (local_tts(m, i)) {
++            m.tts = TTS_FINISHED;
++            s_turn.tts_msg = -1;
++            s_turn.silent = false;
++        } else {
++            m.pcm_frames = (uint32_t)(m.len * MIC_RATE / TEXT_CHARS_PER_S);
++            s_turn.silent = true;
++        }
+         return;
+     }
+ }
+diff --git a/esp32/components/muse/muse_voice.c b/esp32/components/muse/muse_voice.c
+index 78404f2..b0dbd78 100644
+--- a/esp32/components/muse/muse_voice.c
++++ b/esp32/components/muse/muse_voice.c
+@@ -51,6 +51,9 @@ static const char *TAG = "muse_voice";
+ #define PRE_CHUNKS 16                                  /* 320 ms of audio kept from before the press */
+ #endif
+ #define SETTLE_CHUNKS 10   /* after Muse makes a sound, 200 ms of capture is its own tail */
++#define AUTO_SETTLE_CHUNKS 50
++#define AUTO_START_CHUNKS 6
++#define AUTO_SILENCE_CHUNKS 60
+ #define REST_BACKSTOP_MS 60000
+ 
+ #if CONFIG_MUSE_HATCH
+@@ -95,6 +98,10 @@ static size_t s_pre_next, s_pre_fill;
+ static muse_adpcm_t s_pre_enc;
+ #endif
+ static int16_t s_chunk[MUSE_AUDIO_CHUNK];
++static float s_auto_noise_db = -55.0f;
++static float s_auto_threshold_db = -38.0f;
++static unsigned s_auto_voice_chunks = 0;
++static bool s_auto_ready = false;
+ static int s_settle;
+ 
+ /*
+@@ -137,7 +144,9 @@ static void pre_get(size_t i, int16_t *out)
+ static void pre_reset(void)
+ {
+     s_pre_fill = 0;
+-    s_settle = SETTLE_CHUNKS;
++    s_settle = AUTO_SETTLE_CHUNKS;
++    s_auto_voice_chunks = 0;
++    s_auto_ready = false;
+ }
+ 
+ /* One 20 ms idle read: feeds the pre-roll ring and the settings mic meter. */
+@@ -155,6 +164,14 @@ static void idle_capture(void)
+         s_settle--;
+         return;
+     }
++    float db = muse_audio_dbfs(s_chunk, MUSE_AUDIO_CHUNK);
++    s_auto_threshold_db = fmaxf(-40.0f, fminf(-22.0f, s_auto_noise_db + 14.0f));
++    if (db > s_auto_threshold_db) {
++        if (++s_auto_voice_chunks >= AUTO_START_CHUNKS) s_auto_ready = true;
++    } else {
++        s_auto_voice_chunks = 0;
++        s_auto_noise_db = fmaxf(-65.0f, fminf(-30.0f, s_auto_noise_db * 0.98f + db * 0.02f));
++    }
+     pre_chunk_t *c = &s_pre[s_pre_next];
+ #if MUSE_LOW_MEM
+     c->start = s_pre_enc;
+@@ -247,7 +264,7 @@ static void take(rec_stats_t *st, const int16_t *pcm)
+  * kept note to fall back on (why says what failed). There is no start chirp:
+  * anything played now would land on top of the first words.
+  */
+-static bool record(bool barge_in, size_t *held, char *why, size_t cap)
++static bool record(bool barge_in, bool automatic, size_t *held, char *why, size_t cap)
+ {
+     muse_state_set_mode(MUSE_MODE_LISTENING);
+     muse_state_set_progress(0);
+@@ -277,6 +294,7 @@ static bool record(bool barge_in, size_t *held, char *why, size_t cap)
+     }
+     size_t pre = n;
+     bool released = false;
++    unsigned quiet_chunks = 0;
+     size_t stop_at = MAX_FRAMES;
+     while (n + MUSE_AUDIO_CHUNK <= stop_at) {
+         if (muse_audio_read(s_chunk, MUSE_AUDIO_CHUNK) != ESP_OK) {
+@@ -304,6 +322,11 @@ static bool record(bool barge_in, size_t *held, char *why, size_t cap)
+             }
+         }
+         n += MUSE_AUDIO_CHUNK;
++        if (automatic) {
++            float db = muse_audio_dbfs(s_chunk, MUSE_AUDIO_CHUNK);
++            quiet_chunks = db < s_auto_threshold_db - 6.0f ? quiet_chunks + 1 : 0;
++            if (n > pre + MUSE_AUDIO_RATE / 2 && quiet_chunks >= AUTO_SILENCE_CHUNKS) break;
++        }
+         bool tick = n % (MUSE_AUDIO_CHUNK * 5) == 0;
+         if (tick && s_rec && !s_live && !gave_up && !s_held_count && muse_hatch_ready()) {
+             ESP_LOGI(TAG, "Muse in reach: streaming the note so far");
+@@ -355,6 +378,7 @@ static bool hatch_reply(bool *delivered)
+     static char page[MUSE_CAPTION_MAX];
+     bool done = false, speaking = false, replied = false;
+     size_t played = 0;
++    int reply_peak = 0, write_failures = 0;
+     int64_t t0 = esp_timer_get_time();
+     *delivered = false;
+     for (;;) {
+@@ -405,8 +429,12 @@ static bool hatch_reply(bool *delivered)
+                 muse_state_set_mode(MUSE_MODE_SPEAKING);
+                 ESP_LOGI(TAG, "reply audio after %.2fs", (esp_timer_get_time() - t0) / 1e6);
+             }
++            for (size_t i = 0; i < n; ++i) {
++                int value = abs((int)buf[i]);
++                if (value > reply_peak) reply_peak = value;
++            }
+             muse_state_set_level(muse_audio_level(buf, n));
+-            muse_audio_write(buf, n);
++            if (muse_audio_write(buf, n) != ESP_OK) ++write_failures;
+             played += n;
+         } else if (done) {
+             break;
+@@ -423,6 +451,8 @@ static bool hatch_reply(bool *delivered)
+     muse_state_set_level(0);
+     ESP_LOGI(TAG, "muse reply: %.2fs of audio, %.2fs total", (double)played / MUSE_AUDIO_RATE,
+              (esp_timer_get_time() - t0) / 1e6);
++    ESP_LOGI(TAG, "audio diagnosis: peak=%d, write_failures=%d, speaker=%s, volume=%d",
++             reply_peak, write_failures, muse_settings_speaker_on() ? "on" : "off", muse_settings_volume());
+     if (!played) {
+         /* No speech (TTS unavailable): leave the reply text up for a moment. */
+         vTaskDelay(pdMS_TO_TICKS(2500));
+@@ -793,11 +823,12 @@ static void voice_task(void *arg)
+     muse_audio_selftest();
+     for (;;) {
+         bool wake = false;
++        bool automatic = false;
+         if (!pending_down) {
+             muse_input_event_t ev;
+             bool asleep = muse_state_asleep();
+             bool battery = muse_state_on_battery();
+-            bool rest = asleep && battery && !s_chirp && !s_mp3test && !s_loopback;
++            bool rest = false;  /* hands-free mode keeps the microphone ready */
+ #if HOLD_NOTES
+             /* A press goes first: send_held() leaves it queued and returns
+              * without backing off, so retrying before it's read would spin. */
+@@ -846,14 +877,18 @@ static void voice_task(void *arg)
+             }
+             /* The 20 ms read paces this loop. */
+             idle_capture();
+-            if (xQueueReceive(s_queue, &ev, 0) != pdTRUE) {
+-                continue;
+-            }
+-            muse_state_poke();
+-            if (ev.type != MUSE_PTT_DOWN) {
++            if (xQueueReceive(s_queue, &ev, 0) == pdTRUE) {
++                muse_state_poke();
++                if (ev.type != MUSE_PTT_DOWN) continue;
++                wake = ev.wake;
++            } else if (s_auto_ready && muse_hatch_ready()) {
++                s_auto_ready = false;
++                automatic = true;
++                muse_state_poke();
++                ESP_LOGI(TAG, "hands-free speech detected");
++            } else {
+                 continue;
+             }
+-            wake = ev.wake;
+         }
+         if (wake && !held_on_waking()) {
+             continue;   /* a tap: it only woke Muse */
+@@ -865,7 +900,7 @@ static void voice_task(void *arg)
+         }
+         size_t held;
+         char why[96];
+-        bool ok = record(pending_down, &held, why, sizeof(why));
++        bool ok = record(pending_down, automatic, &held, why, sizeof(why));
+         pending_down = false;
+         if (held < MIN_HELD_FRAMES && !wake) {
+             muse_hatch_turn_cancel();
+diff --git a/esp32/main/wifi_mgr.c b/esp32/main/wifi_mgr.c
+index 7a5de97..a176fd1 100644
+--- a/esp32/main/wifi_mgr.c
++++ b/esp32/main/wifi_mgr.c
+@@ -187,6 +187,21 @@ static void event_handler(void *arg, esp_event_base_t base,
+     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
+         ip_event_got_ip_t *ev = (ip_event_got_ip_t *)data;
+         ESP_LOGI(TAG, "got IP " IPSTR, IP2STR(&ev->ip_info.ip));
++        // Route Muse DNS through the local, certificate-preserving PC relay
++        // only on the user's home network. Keep the DHCP DNS as fallback.
++        esp_ip4_addr_t home_gateway = {0};
++        esp_netif_str_to_ip4("192.0.2.1", &home_gateway);
++        if (ev && s_sta_netif && ev->ip_info.gw.addr == home_gateway.addr) {
++            esp_netif_dns_info_t previous = {0};
++            esp_netif_dns_info_t relay = {0};
++            relay.ip.type = ESP_IPADDR_TYPE_V4;
++            if (esp_netif_get_dns_info(s_sta_netif, ESP_NETIF_DNS_MAIN, &previous) == ESP_OK &&
++                esp_netif_str_to_ip4("192.0.2.10", &relay.ip.u_addr.ip4) == ESP_OK) {
++                esp_netif_set_dns_info(s_sta_netif, ESP_NETIF_DNS_BACKUP, &previous);
++                if (esp_netif_set_dns_info(s_sta_netif, ESP_NETIF_DNS_MAIN, &relay) == ESP_OK)
++                    ESP_LOGI(TAG, "Muse local relay DNS configured for home network");
++            }
++        }
+         s_retry = 0;
+         s_keep_connected = true;
+         s_reconnect_backoff_ms = RECONNECT_BACKOFF_MIN_MS;  // reset on success
+
