@@ -6,3 +6,19 @@
 
 不要上传 token、Wi-Fi 凭据、构建配置、设备固件备份或个人网络信息。使用时须遵守上游项目许可证和服务条款。
 
+
+## 图片
+
+以下为设备照片，后两张记录了排查连接问题时的状态：
+
+![设备语音界面](images/device-voice.jpg)
+
+![Muse 连接故障排查](images/device-connection.jpg)
+
+![Muse 断线状态](images/device-offline.jpg)
+
+以下键盘界面图片来自上游立创适配项目：
+
+![中文键盘](images/keyboard-zh.png)
+
+![英文键盘](images/keyboard-en.png)
